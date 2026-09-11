@@ -1,5 +1,13 @@
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
 import {
+	createDefaultModeStatsMap,
+	type ElementPerformance,
+	type ElementStatsMap,
+	type GameModeId,
+	type ModeStats,
+	type ModeStatsMap,
+} from '../modes'
+import {
 	createDefaultPersistedState,
 	DEFAULT_HINT_USAGE,
 	STORAGE_SCHEMA_VERSION,
@@ -63,6 +71,27 @@ export const MIGRATIONS: Record<number, Migration> = {
 			},
 		}
 	},
+	/**
+	 * v3: element performance + per-mode records for multi-mode play.
+	 */
+	3: (raw) => ({
+		...raw,
+		schemaVersion: 3,
+		elementStats: isRecord(raw.elementStats) ? raw.elementStats : {},
+		modeStats: isRecord(raw.modeStats)
+			? raw.modeStats
+			: createDefaultModeStatsMap(),
+		progress: {
+			...(isRecord(raw.progress) ? raw.progress : {}),
+			unlockedModes: [
+				'CLASSIC',
+				'TIMED_60',
+				'NO_MISTAKE',
+				'MIXED',
+				'WEAK_ELEMENTS',
+			],
+		},
+	}),
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -283,10 +312,70 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 				defaults.daily.dailyCompleted,
 			),
 		},
+		elementStats: sanitizeElementStats(doc.elementStats),
+		modeStats: sanitizeModeStats(doc.modeStats),
 		completedSessionIds,
 		updatedAt:
 			typeof doc.updatedAt === 'string' ? doc.updatedAt : defaults.updatedAt,
 	}
+}
+
+function sanitizeElementStats(value: unknown): ElementStatsMap {
+	if (!isRecord(value)) {
+		return {}
+	}
+	const result: ElementStatsMap = {}
+	for (const [key, rawStats] of Object.entries(value)) {
+		if (!/^\d+$/.test(key) || !isRecord(rawStats)) {
+			continue
+		}
+		const atomic = Number(key)
+		if (atomic < 1 || atomic > 118) {
+			continue
+		}
+		const performance: ElementPerformance = {
+			shown: nonNegativeNumberOr(rawStats.shown, 0),
+			correct: nonNegativeNumberOr(rawStats.correct, 0),
+			wrong: nonNegativeNumberOr(rawStats.wrong, 0),
+			assistedCorrect: nonNegativeNumberOr(rawStats.assistedCorrect, 0),
+			lastSeenAt:
+				typeof rawStats.lastSeenAt === 'string' || rawStats.lastSeenAt === null
+					? (rawStats.lastSeenAt as string | null)
+					: null,
+		}
+		result[key] = performance
+	}
+	return result
+}
+
+function sanitizeModeStats(value: unknown): ModeStatsMap {
+	const defaults = createDefaultModeStatsMap()
+	if (!isRecord(value)) {
+		return defaults
+	}
+	const modeIds: GameModeId[] = [
+		'CLASSIC',
+		'TIMED_60',
+		'NO_MISTAKE',
+		'MIXED',
+		'WEAK_ELEMENTS',
+	]
+	const result = { ...defaults }
+	for (const modeId of modeIds) {
+		const raw = value[modeId]
+		if (!isRecord(raw)) {
+			continue
+		}
+		const stats: ModeStats = {
+			gamesPlayed: nonNegativeNumberOr(raw.gamesPlayed, 0),
+			bestScore: nonNegativeNumberOr(raw.bestScore, 0),
+			bestCorrect: nonNegativeNumberOr(raw.bestCorrect, 0),
+			bestStreak: nonNegativeNumberOr(raw.bestStreak, 0),
+			bestAccuracy: clampUnitInterval(raw.bestAccuracy, 0),
+		}
+		result[modeId] = stats
+	}
+	return result
 }
 
 function stringArrayOr(value: unknown, fallback: string[]): string[] {

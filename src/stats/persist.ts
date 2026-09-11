@@ -9,6 +9,13 @@ import {
 	type AtomWalletState,
 } from '../economy'
 import {
+	applyElementOutcome,
+	applyModeSessionToStats,
+	type ElementOutcome,
+	type ElementStatsMap,
+	type GameModeId,
+} from '../modes'
+import {
 	createDefaultPersistedState,
 	DEFAULT_STATISTICS,
 	loadAppState,
@@ -32,6 +39,9 @@ export interface PersistCompletedSessionResult extends AppliedSessionStats {
 	atomsEarned: number
 	atomBalance: number
 	rewardBreakdown: AtomRewardBreakdown
+	modeId: GameModeId
+	isNewModeRecord: boolean
+	endReason: string | null
 }
 
 export function toEconomyWallet(atoms: AtomsWallet): AtomWalletState {
@@ -94,10 +104,28 @@ export async function persistAtomSpend(
 }
 
 /**
- * Apply a finished classic sprint to local statistics + atom rewards.
- * Idempotent via session.extensions.rewardsCommitted.
- * Storage failures never throw to the UI layer.
+ * Build element-stat updates from finalized session answers.
  */
+export function buildElementStatsUpdates(
+	session: GameSession,
+	previous: ElementStatsMap,
+): ElementStatsMap {
+	const next: ElementStatsMap = { ...previous }
+	for (const answer of session.answers) {
+		const key = String(answer.elementAtomicNumber)
+		let outcome: ElementOutcome
+		if (answer.correct && answer.usedSecondChance) {
+			outcome = 'assisted_correct'
+		} else if (answer.correct) {
+			outcome = 'first_try_correct'
+		} else {
+			outcome = 'wrong'
+		}
+		next[key] = applyElementOutcome(next[key], outcome)
+	}
+	return next
+}
+
 let completionCommitQueue: Promise<void> = Promise.resolve()
 
 async function persistCompletedSessionStatsUnlocked(
@@ -105,6 +133,7 @@ async function persistCompletedSessionStatsUnlocked(
 	storage?: KeyValueStorage,
 ): Promise<PersistCompletedSessionResult> {
 	const summary = summarizeCompletedSession(session)
+	const modeId = session.modeId
 	let previous: AppStatistics = { ...DEFAULT_STATISTICS }
 	let previousAtoms = createDefaultPersistedState().atoms
 
@@ -114,6 +143,8 @@ async function persistCompletedSessionStatsUnlocked(
 		questionCount: summary.questionCount,
 		bestStreak: summary.bestStreak,
 		isNewBestScore: false,
+		modeId,
+		sessionCompleted: true,
 	})
 
 	if (session.extensions.rewardsCommitted) {
@@ -126,10 +157,10 @@ async function persistCompletedSessionStatsUnlocked(
 			persisted: true,
 			atomsEarned: 0,
 			atomBalance: current.atoms.balance,
-			rewardBreakdown: {
-				...emptyBreakdown,
-				total: 0,
-			},
+			rewardBreakdown: { ...emptyBreakdown, total: 0 },
+			modeId,
+			isNewModeRecord: false,
+			endReason: session.endReason,
 		}
 	}
 
@@ -146,20 +177,41 @@ async function persistCompletedSessionStatsUnlocked(
 				persisted: true,
 				atomsEarned: 0,
 				atomBalance: current.atoms.balance,
-				rewardBreakdown: {
-					...emptyBreakdown,
-					total: 0,
-				},
+				rewardBreakdown: { ...emptyBreakdown, total: 0 },
+				modeId,
+				isNewModeRecord: false,
+				endReason: session.endReason,
 			}
 		}
+
 		const applied = applyCompletedSessionToStatistics(previous, summary)
+		const modeApplied = applyModeSessionToStats(
+			current.modeStats[modeId],
+			{
+				score: summary.score,
+				correctCount: summary.correctCount,
+				bestStreak: summary.bestStreak,
+				accuracy: summary.accuracy,
+			},
+			modeId,
+		)
+
+		const isNewBestScore =
+			modeId === 'CLASSIC'
+				? applied.isNewBestScore
+				: modeApplied.isNewRecord
 
 		const breakdown = calculateAtomRewards({
 			correctCount: summary.correctCount,
 			wrongCount: summary.wrongCount,
-			questionCount: summary.questionCount,
+			questionCount:
+				session.modeId === 'TIMED_60' || session.modeId === 'NO_MISTAKE'
+					? summary.correctCount + summary.wrongCount
+					: summary.questionCount,
 			bestStreak: summary.bestStreak,
-			isNewBestScore: applied.isNewBestScore,
+			isNewBestScore,
+			modeId,
+			sessionCompleted: true,
 		})
 
 		const earned = earnAtoms(
@@ -170,26 +222,33 @@ async function persistCompletedSessionStatsUnlocked(
 
 		const nextState: PersistedAppState = {
 			...current,
-			completedSessionIds: [
-				...current.completedSessionIds,
-				session.id,
-			],
+			completedSessionIds: [...current.completedSessionIds, session.id],
 			statistics: {
 				...applied.statistics,
 				totalAtomsEarned:
 					applied.statistics.totalAtomsEarned + breakdown.total,
 			},
 			atoms: toPersistedAtoms(earned.wallet),
+			elementStats: buildElementStatsUpdates(session, current.elementStats),
+			modeStats: {
+				...current.modeStats,
+				[modeId]: modeApplied.stats,
+			},
 		}
 		await saveAppState(nextState, storage)
 
 		return {
 			...applied,
+			previousBestScore: modeApplied.previousRecord,
+			isNewBestScore,
 			summary,
 			persisted: true,
 			atomsEarned: breakdown.total,
 			atomBalance: earned.wallet.balance,
 			rewardBreakdown: breakdown,
+			modeId,
+			isNewModeRecord: modeApplied.isNewRecord,
+			endReason: session.endReason,
 		}
 	} catch {
 		const applied = applyCompletedSessionToStatistics(previous, summary)
@@ -199,6 +258,8 @@ async function persistCompletedSessionStatsUnlocked(
 			questionCount: summary.questionCount,
 			bestStreak: summary.bestStreak,
 			isNewBestScore: applied.isNewBestScore,
+			modeId,
+			sessionCompleted: true,
 		})
 		const earned = earnAtoms(
 			toEconomyWallet(previousAtoms),
@@ -212,6 +273,9 @@ async function persistCompletedSessionStatsUnlocked(
 			atomsEarned: breakdown.total,
 			atomBalance: earned.wallet.balance,
 			rewardBreakdown: breakdown,
+			modeId,
+			isNewModeRecord: false,
+			endReason: session.endReason,
 		}
 	}
 }
@@ -237,9 +301,6 @@ export async function persistCompletedSessionStats(
 	}
 }
 
-/**
- * Commit rewards once and return the marked session for callers that keep state.
- */
 export function commitSessionAtomRewards(
 	session: GameSession,
 	atomsEarned: number,
@@ -247,9 +308,6 @@ export function commitSessionAtomRewards(
 	return markRewardsCommitted(session, atomsEarned)
 }
 
-/**
- * Load home-screen statistics with safe defaults on failure.
- */
 export async function loadHomeStatistics(
 	storage?: KeyValueStorage,
 ): Promise<AppStatistics> {
@@ -261,9 +319,6 @@ export async function loadHomeStatistics(
 	}
 }
 
-/**
- * Load wallet balance for Home / Game chips.
- */
 export async function loadAtomWallet(
 	storage?: KeyValueStorage,
 ): Promise<AtomWalletState> {
@@ -272,5 +327,23 @@ export async function loadAtomWallet(
 		return toEconomyWallet(state.atoms)
 	} catch {
 		return toEconomyWallet(createDefaultPersistedState().atoms)
+	}
+}
+
+export async function loadModeStats(storage?: KeyValueStorage) {
+	try {
+		const state = await loadAppState(storage)
+		return state.modeStats
+	} catch {
+		return createDefaultPersistedState().modeStats
+	}
+}
+
+export async function loadElementStats(storage?: KeyValueStorage) {
+	try {
+		const state = await loadAppState(storage)
+		return state.elementStats
+	} catch {
+		return {}
 	}
 }

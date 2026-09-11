@@ -32,7 +32,9 @@ describe('storage foundation', () => {
 		expect(state.settings.locale).toBe('ru')
 		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
 		expect(state.atoms.startingGranted).toBe(true)
-		expect(state.progress.unlockedModes).toContain('classic')
+		expect(state.progress.unlockedModes).toContain('CLASSIC')
+		expect(state.elementStats).toEqual({})
+		expect(state.modeStats.CLASSIC.gamesPlayed).toBe(0)
 	})
 
 	it('migrates empty/corrupt payloads to defaults', () => {
@@ -63,11 +65,18 @@ describe('storage foundation', () => {
 		expect(state.statistics.gamesPlayed).toBe(0)
 		expect(state.statistics.bestScore).toBe(0)
 		expect(state.progress.elementMastery).toEqual({ '6': 80 })
-		expect(state.progress.unlockedModes).toEqual(['classic'])
+		// v3 migration unlocks all PHASE 5 modes for existing installs.
+		expect(state.progress.unlockedModes).toEqual([
+			'CLASSIC',
+			'TIMED_60',
+			'NO_MISTAKE',
+			'MIXED',
+			'WEAK_ELEMENTS',
+		])
 		expect(state.achievements.unlockedIds).toEqual([])
 		expect(state.daily.dailyCompleted).toBe(false)
 		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
-		expect(state.schemaVersion).toBe(2)
+		expect(state.schemaVersion).toBe(3)
 	})
 
 	it('round-trips through the storage abstraction', async () => {

@@ -1,5 +1,6 @@
 import type { AppStatistics } from '../storage/schema'
 import type { GameSession } from '../game/types'
+import { getGameModeConfig } from '../modes'
 
 /**
  * Snapshot of a finished classic sprint used for persistence and Result UI.
@@ -22,12 +23,17 @@ export function summarizeCompletedSession(
 	const answeredCount = session.answers.length
 	const accuracy =
 		answeredCount === 0 ? 0 : session.correctCount / answeredCount
+	const mode = getGameModeConfig(session.modeId)
+	const questionCount =
+		mode.endCondition === 'fixed_count'
+			? session.questionCount
+			: answeredCount
 
 	return {
 		score: session.score,
 		correctCount: session.correctCount,
 		wrongCount: session.wrongCount,
-		questionCount: session.questionCount,
+		questionCount,
 		bestStreak: session.bestStreak,
 		accuracy,
 	}

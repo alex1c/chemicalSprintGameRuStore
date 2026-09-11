@@ -1,20 +1,68 @@
-import { CLASSIC_SESSION_QUESTION_COUNT } from '../constants/app'
-import { CLASSIC_QUESTION_TYPES } from '../constants/gameplay'
+import { ELEMENTS, type ChemicalElement } from '../data/chemistry'
+import {
+	getGameModeConfig,
+	getWeakModeAvailability,
+	type ElementStatsMap,
+	type GameModeId,
+} from '../modes'
 import { createGameSession, type CreateSessionOptions } from './session'
 import type { GameSession } from './types'
 
+export interface CreateModeSessionOptions
+	extends Omit<CreateSessionOptions, 'modeId' | 'elements'> {
+	elementStats?: ElementStatsMap
+}
+
+export type { WeakModeAvailability } from '../modes'
+
+export { getWeakModeAvailability }
+
+function elementsFromAtomicNumbers(
+	atomicNumbers: readonly number[],
+): ChemicalElement[] {
+	const set = new Set(atomicNumbers)
+	return ELEMENTS.filter((el) => set.has(el.atomicNumber))
+}
+
 /**
- * Create a Classic Sprint session with balanced question-type mix.
+ * Create a session for any PHASE 5 mode.
+ * Returns null for Weak Elements when the weak pool is insufficient.
  */
-export function createClassicSprintSession(
-	options: Omit<CreateSessionOptions, 'types' | 'questionCount'> & {
-		questionCount?: number
-	} = {},
-): GameSession {
+export function createModeSession(
+	modeId: GameModeId,
+	options: CreateModeSessionOptions = {},
+): GameSession | null {
+	const mode = getGameModeConfig(modeId)
+
+	if (modeId === 'WEAK_ELEMENTS') {
+		const availability = getWeakModeAvailability(options.elementStats ?? {})
+		if (!availability.available) {
+			return null
+		}
+		const weakElements = elementsFromAtomicNumbers(availability.atomicNumbers)
+		return createGameSession({
+			...options,
+			modeId,
+			questionCount: mode.questionCount ?? 10,
+			elements: weakElements,
+			avoidConsecutiveElementRepeats: true,
+		})
+	}
+
 	return createGameSession({
 		...options,
-		questionCount: options.questionCount ?? CLASSIC_SESSION_QUESTION_COUNT,
-		types: CLASSIC_QUESTION_TYPES,
+		modeId,
+		questionCount:
+			options.questionCount ?? mode.questionCount ?? mode.poolSize,
 		avoidConsecutiveElementRepeats: true,
 	})
+}
+
+/**
+ * Classic Sprint factory kept for backward-compatible call sites.
+ */
+export function createClassicSprintSession(
+	options: CreateModeSessionOptions = {},
+): GameSession {
+	return createModeSession('CLASSIC', options)!
 }

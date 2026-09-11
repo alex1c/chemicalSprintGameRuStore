@@ -91,6 +91,7 @@ export function HomeScreen({ navigation }: Props) {
 					accessibilityLabel="Играть в классический спринт"
 					onPress={() =>
 						navigation.navigate(ROUTES.Game, {
+							modeId: 'CLASSIC',
 							sessionKey: Date.now(),
 						})
 					}
@@ -99,7 +100,7 @@ export function HomeScreen({ navigation }: Props) {
 
 			<View style={styles.secondary}>
 				<SecondaryLink
-					label="Режимы"
+					label="Другие режимы"
 					onPress={() => navigation.navigate(ROUTES.Modes)}
 				/>
 				<SecondaryLink

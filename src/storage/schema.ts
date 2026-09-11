@@ -4,8 +4,13 @@
  */
 
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
+import {
+	createDefaultModeStatsMap,
+	type ElementStatsMap,
+	type ModeStatsMap,
+} from '../modes'
 
-export const STORAGE_SCHEMA_VERSION = 2 as const
+export const STORAGE_SCHEMA_VERSION = 3 as const
 
 export interface AppSettings {
 	soundEnabled: boolean
@@ -75,6 +80,10 @@ export interface PersistedAppState {
 	atoms: AtomsWallet
 	achievements: AchievementsState
 	daily: DailyState
+	/** Per-element answer performance for Weak Elements mode. */
+	elementStats: ElementStatsMap
+	/** Per-mode personal records. */
+	modeStats: ModeStatsMap
 	/** Completed session ids make reward/stat commits durable and idempotent. */
 	completedSessionIds: string[]
 	updatedAt: string
@@ -110,7 +119,13 @@ export const DEFAULT_STATISTICS: AppStatistics = {
 
 export const DEFAULT_PROGRESS: AppProgress = {
 	elementMastery: {},
-	unlockedModes: ['classic'],
+	unlockedModes: [
+		'CLASSIC',
+		'TIMED_60',
+		'NO_MISTAKE',
+		'MIXED',
+		'WEAK_ELEMENTS',
+	],
 }
 
 /** Fresh installs receive the starting wallet grant immediately. */
@@ -147,7 +162,9 @@ export function createDefaultPersistedState(
 		},
 		atoms: { ...DEFAULT_ATOMS },
 		achievements: { unlockedIds: [] },
-	daily: { ...DEFAULT_DAILY },
+		daily: { ...DEFAULT_DAILY },
+		elementStats: {},
+		modeStats: createDefaultModeStatsMap(),
 		completedSessionIds: [],
 		updatedAt: now().toISOString(),
 	}

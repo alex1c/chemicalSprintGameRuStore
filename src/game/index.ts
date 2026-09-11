@@ -28,9 +28,17 @@ export {
 	getSessionStats,
 	getCurrentQuestion,
 	getLatestAnswer,
+	completeSession,
+	expireTimedSessionIfNeeded,
+	getRemainingSeconds,
+	appendQuestion,
 } from './session'
 
-export { createClassicSprintSession } from './classic'
+export {
+	createClassicSprintSession,
+	createModeSession,
+	getWeakModeAvailability,
+} from './classic'
 
 export type {
 	QuestionType,

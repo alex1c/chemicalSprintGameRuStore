@@ -3,17 +3,28 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { ROUTES } from '../constants/routes'
+import { getGameModeConfig } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
 import { theme } from '../theme'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Result'>
 
 function resultHeadline(
+	modeId: string,
 	accuracy: number,
 	correctCount: number,
 	total: number,
 ): string {
-	if (correctCount === total) {
+	if (modeId === 'WEAK_ELEMENTS') {
+		return 'Тренировка слабых элементов завершена'
+	}
+	if (modeId === 'NO_MISTAKE') {
+		return correctCount > 0 ? 'Отличная серия!' : 'Попробуйте ещё'
+	}
+	if (modeId === 'TIMED_60') {
+		return 'Минута закончилась!'
+	}
+	if (correctCount === total && total > 0) {
 		return 'Идеально!'
 	}
 	if (accuracy >= 0.8) {
@@ -26,37 +37,61 @@ function resultHeadline(
 }
 
 /**
- * Post-session summary with atom rewards and restart / home actions.
+ * Mode-aware post-session summary. Restart keeps the same mode.
  */
 export function ResultScreen({ navigation, route }: Props) {
 	const {
+		modeId,
 		score,
 		correctCount,
 		questionCount,
+		wrongCount,
 		accuracy,
 		bestStreak,
 		previousBestScore,
 		isNewBestScore,
+		isNewModeRecord,
 		atomsEarned,
 		atomBalance,
 		rewardBreakdown,
 	} = route.params
 
+	const mode = getGameModeConfig(modeId)
+	const answered = correctCount + wrongCount
 	const accuracyPct = Math.round(accuracy * 100)
-	const headline = resultHeadline(accuracy, correctCount, questionCount)
-	const isPerfect = correctCount === questionCount && questionCount > 0
+	const headline = resultHeadline(
+		modeId,
+		accuracy,
+		correctCount,
+		mode.endCondition === 'fixed_count' ? questionCount : answered,
+	)
+	const isPerfect =
+		mode.endCondition === 'fixed_count' &&
+		correctCount === questionCount &&
+		questionCount > 0
 
 	return (
 		<Screen edges={['top', 'left', 'right', 'bottom']}>
 			<View style={styles.content}>
-				<Text style={styles.emoji}>🧪</Text>
+				<Text style={styles.emoji}>{mode.icon}</Text>
+				<Text style={styles.modeTitle}>{mode.titleRu}</Text>
 				<Text style={styles.headline}>{headline}</Text>
 				{isPerfect ? (
 					<Text style={styles.perfect}>Идеальный спринт!</Text>
 				) : null}
-				<Text style={styles.scoreLine}>
-					{correctCount} / {questionCount}
-				</Text>
+
+				{mode.endCondition === 'fixed_count' ? (
+					<Text style={styles.scoreLine}>
+						{correctCount} / {questionCount}
+					</Text>
+				) : mode.endCondition === 'until_mistake' ? (
+					<Text style={styles.scoreLine}>{correctCount} верных</Text>
+				) : (
+					<Text style={styles.scoreLine}>
+						{correctCount} верных из {answered}
+					</Text>
+				)}
+
 				<Text style={styles.meta}>{accuracyPct}% точность</Text>
 				<Text style={styles.meta}>Очки: {score}</Text>
 				<Text style={styles.meta}>🔥 Лучшая серия: {bestStreak}</Text>
@@ -64,7 +99,7 @@ export function ResultScreen({ navigation, route }: Props) {
 				<View style={styles.atomsBlock}>
 					<Text style={styles.atomsEarned}>⚛ +{atomsEarned}</Text>
 					<Text style={styles.atomsBalance}>
-						Заработано за спринт: +{atomsEarned} ⚛
+						Заработано: +{atomsEarned} ⚛
 					</Text>
 					<Text style={styles.atomsBalance}>
 						Баланс: {atomBalance} ⚛
@@ -73,21 +108,19 @@ export function ResultScreen({ navigation, route }: Props) {
 
 				<View style={styles.badges}>
 					{rewardBreakdown.streakBonuses > 0 ? (
-						<Badge
-							text={`Серия +${rewardBreakdown.streakBonuses}`}
-						/>
+						<Badge text={`Серия +${rewardBreakdown.streakBonuses}`} />
 					) : null}
 					{rewardBreakdown.newRecord > 0 ? (
-						<Badge text={`Новый рекорд +${rewardBreakdown.newRecord}`} />
+						<Badge text={`Рекорд +${rewardBreakdown.newRecord}`} />
 					) : null}
 					{rewardBreakdown.perfect > 0 ? (
 						<Badge text={`Идеально +${rewardBreakdown.perfect}`} />
 					) : null}
 				</View>
 
-				{isNewBestScore ? (
+				{isNewBestScore || isNewModeRecord ? (
 					<View style={styles.recordBanner}>
-						<Text style={styles.recordText}>Новый рекорд!</Text>
+						<Text style={styles.recordText}>Новый рекорд режима!</Text>
 					</View>
 				) : (
 					<Text style={styles.recordMuted}>
@@ -99,9 +132,10 @@ export function ResultScreen({ navigation, route }: Props) {
 			<View style={styles.actions}>
 				<PrimaryButton
 					label="ЕЩЁ РАЗ"
-					accessibilityLabel="Сыграть ещё раз"
+					accessibilityLabel="Сыграть ещё раз в тот же режим"
 					onPress={() =>
 						navigation.replace(ROUTES.Game, {
+							modeId,
 							sessionKey: Date.now(),
 						})
 					}
@@ -134,7 +168,12 @@ const styles = StyleSheet.create({
 	},
 	emoji: {
 		fontSize: 44,
-		marginBottom: theme.spacing.md,
+		marginBottom: theme.spacing.sm,
+	},
+	modeTitle: {
+		...theme.typography.caption,
+		color: theme.colors.textSecondary,
+		marginBottom: theme.spacing.xs,
 	},
 	headline: {
 		...theme.typography.title,

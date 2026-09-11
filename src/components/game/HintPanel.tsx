@@ -8,6 +8,7 @@ interface HintPanelProps {
 	onToggle: () => void
 	disabled?: boolean
 	atomBalance: number
+	allowedHints: readonly HintType[]
 	canAffordHint: (type: HintType) => boolean
 	isHintAvailable: (type: HintType) => boolean
 	onUseHint: (type: Exclude<HintType, 'saveStreak'>) => void
@@ -15,25 +16,28 @@ interface HintPanelProps {
 	secondChanceActive?: boolean
 }
 
-const PRE_ANSWER_HINTS: Exclude<HintType, 'saveStreak'>[] = [
-	'fiftyFifty',
-	'fact',
-	'secondChance',
-]
-
 /**
- * Compact expandable hint controls for Classic Sprint.
+ * Compact expandable hint controls driven by mode allowedHints.
  */
 export function HintPanel({
 	open,
 	onToggle,
 	disabled = false,
+	allowedHints,
 	canAffordHint,
 	isHintAvailable,
 	onUseHint,
 	insufficientMessage,
 	secondChanceActive = false,
 }: HintPanelProps) {
+	const preAnswerHints = (
+		['fiftyFifty', 'fact', 'secondChance'] as const
+	).filter((type) => allowedHints.includes(type))
+
+	if (preAnswerHints.length === 0) {
+		return null
+	}
+
 	return (
 		<View style={styles.wrap}>
 			<Pressable
@@ -52,7 +56,7 @@ export function HintPanel({
 
 			{open && !disabled ? (
 				<View style={styles.panel}>
-					{PRE_ANSWER_HINTS.map((type) => {
+					{preAnswerHints.map((type) => {
 						const available = isHintAvailable(type)
 						const affordable = canAffordHint(type)
 						const enabled = available && affordable

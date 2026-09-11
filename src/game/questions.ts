@@ -231,6 +231,8 @@ export function generateQuestion(options: GenerateQuestionOptions): QuizQuestion
 
 export interface GenerateQuestionSetOptions {
 	avoidConsecutiveElementRepeats?: boolean
+	/** Optional restricted element pool (e.g. weak elements). */
+	elements?: readonly ChemicalElement[]
 }
 
 /**
@@ -261,6 +263,7 @@ export function generateQuestionSet(
 	const typeOrder = shuffleInPlace([...types], rng)
 	const questions: QuizQuestion[] = []
 	let previousAtomicNumber: number | null = null
+	const pool = options.elements
 
 	for (let i = 0; i < count; i += 1) {
 		const type = typeOrder[i % typeOrder.length]!
@@ -271,6 +274,7 @@ export function generateQuestionSet(
 		const question = generateQuestion({
 			rng,
 			type,
+			elements: pool,
 			excludeAtomicNumbers: exclude,
 		})
 		questions.push(question)

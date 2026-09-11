@@ -119,6 +119,8 @@ export interface SessionEconomyExtensions {
 
 export interface GameSession {
 	id: string
+	/** Active play mode for this session. */
+	modeId: import('../modes/types').GameModeId
 	questionCount: number
 	questions: QuizQuestion[]
 	currentIndex: number
@@ -132,6 +134,10 @@ export interface GameSession {
 	isComplete: boolean
 	/** Points earned by the most recent answer (useful for +N UI). */
 	lastPointsEarned: number
+	/** Absolute deadline timestamp (ms) for timed modes; null otherwise. */
+	deadlineAt: number | null
+	/** Why the session ended (set on complete). */
+	endReason: import('../modes/types').SessionEndReason
 	extensions: SessionEconomyExtensions
 }
 

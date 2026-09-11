@@ -1,12 +1,13 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ROUTES } from '../constants/routes'
 import type { AtomRewardBreakdown } from '../economy'
+import type { GameModeId } from '../modes'
 
 /**
- * Params passed to Result after a completed classic sprint.
- * isNewBestScore is computed before overwrite so the UI is correct.
+ * Params passed to Result after a completed sprint.
  */
 export type ResultScreenParams = {
+	modeId: GameModeId
 	score: number
 	correctCount: number
 	wrongCount: number
@@ -15,18 +16,17 @@ export type ResultScreenParams = {
 	bestStreak: number
 	previousBestScore: number
 	isNewBestScore: boolean
+	isNewModeRecord: boolean
 	persisted: boolean
 	atomsEarned: number
 	atomBalance: number
 	rewardBreakdown: AtomRewardBreakdown
+	endReason: string | null
 }
 
-/**
- * Root stack params for all planned ForestMusic screens.
- */
 export type RootStackParamList = {
 	[ROUTES.Home]: undefined
-	[ROUTES.Game]: { sessionKey?: number } | undefined
+	[ROUTES.Game]: { sessionKey?: number; modeId?: GameModeId } | undefined
 	[ROUTES.Result]: ResultScreenParams
 	[ROUTES.Modes]: undefined
 	[ROUTES.Progress]: undefined

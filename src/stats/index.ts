@@ -14,8 +14,11 @@ export {
 	commitSessionAtomRewards,
 	loadHomeStatistics,
 	loadAtomWallet,
+	loadModeStats,
+	loadElementStats,
 	toEconomyWallet,
 	toPersistedAtoms,
+	buildElementStatsUpdates,
 } from './persist'
 
 export type { PersistCompletedSessionResult } from './persist'
