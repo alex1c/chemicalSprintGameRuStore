@@ -67,7 +67,7 @@ export function getBalance(wallet: AtomWalletState): number {
 }
 
 export function canAfford(wallet: AtomWalletState, cost: number): boolean {
-	return cost >= 0 && wallet.balance >= cost
+	return Number.isInteger(cost) && cost >= 0 && wallet.balance >= cost
 }
 
 function nowIso(): string {
@@ -90,7 +90,7 @@ export function grantStartingAtoms(
 			error: 'already_granted',
 		}
 	}
-	if (!Number.isFinite(amount) || amount < 0) {
+	if (!Number.isInteger(amount) || amount < 0) {
 		return {
 			ok: false,
 			wallet,
@@ -129,7 +129,7 @@ export function earnAtoms(
 	reason: AtomEarnReason,
 	timestamp: string = nowIso(),
 ): AtomWalletResult {
-	if (!Number.isFinite(amount) || amount < 0) {
+	if (!Number.isInteger(amount) || amount < 0) {
 		return {
 			ok: false,
 			wallet,
@@ -180,7 +180,7 @@ export function spendAtoms(
 	reason: AtomSpendReason,
 	timestamp: string = nowIso(),
 ): AtomWalletResult {
-	if (!Number.isFinite(amount) || amount < 0) {
+	if (!Number.isInteger(amount) || amount < 0) {
 		return {
 			ok: false,
 			wallet,

@@ -152,6 +152,7 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 	const atoms = isRecord(doc.atoms) ? doc.atoms : {}
 	const achievements = isRecord(doc.achievements) ? doc.achievements : {}
 	const daily = isRecord(doc.daily) ? doc.daily : {}
+	const completedSessionIds = stringArrayOr(doc.completedSessionIds, [])
 
 	const sanitizedAtomsBalance = nonNegativeNumberOr(
 		atoms.balance,
@@ -282,6 +283,7 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 				defaults.daily.dailyCompleted,
 			),
 		},
+		completedSessionIds,
 		updatedAt:
 			typeof doc.updatedAt === 'string' ? doc.updatedAt : defaults.updatedAt,
 	}

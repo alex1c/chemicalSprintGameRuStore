@@ -13,6 +13,7 @@ import {
 import {
 	DEFAULT_STATISTICS,
 	createDefaultPersistedState,
+	loadAppState,
 } from '../../src/storage'
 import type { KeyValueStorage } from '../../src/storage'
 
@@ -171,8 +172,23 @@ describe('classic sprint gameplay domain', () => {
 		expect(result.summary.questionCount).toBe(2)
 
 		const again = await persistCompletedSessionStats(session, memory)
-		expect(again.statistics.gamesPlayed).toBe(2)
+		expect(again.statistics.gamesPlayed).toBe(1)
+		expect(again.atomsEarned).toBe(0)
 		expect(again.previousBestScore).toBe(result.statistics.bestScore)
+
+		const parallelMemory = new MemoryStorage()
+		const [parallelA, parallelB] = await Promise.all([
+			persistCompletedSessionStats(session, parallelMemory),
+			persistCompletedSessionStats(session, parallelMemory),
+		])
+		const parallelLoaded = await loadAppState(parallelMemory)
+		expect(parallelLoaded.statistics.gamesPlayed).toBe(1)
+		expect(parallelLoaded.atoms.balance).toBe(
+			createDefaultPersistedState().atoms.balance + parallelA.atomsEarned,
+		)
+		expect(parallelA.atomsEarned + parallelB.atomsEarned).toBe(
+			parallelA.atomsEarned,
+		)
 	})
 
 	it('handles storage failure without throwing', async () => {

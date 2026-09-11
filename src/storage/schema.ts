@@ -75,6 +75,8 @@ export interface PersistedAppState {
 	atoms: AtomsWallet
 	achievements: AchievementsState
 	daily: DailyState
+	/** Completed session ids make reward/stat commits durable and idempotent. */
+	completedSessionIds: string[]
 	updatedAt: string
 }
 
@@ -145,7 +147,8 @@ export function createDefaultPersistedState(
 		},
 		atoms: { ...DEFAULT_ATOMS },
 		achievements: { unlockedIds: [] },
-		daily: { ...DEFAULT_DAILY },
+	daily: { ...DEFAULT_DAILY },
+		completedSessionIds: [],
 		updatedAt: now().toISOString(),
 	}
 }

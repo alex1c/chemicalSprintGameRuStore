@@ -25,7 +25,7 @@ import {
 	createSeededRng,
 	submitCurrentAnswer,
 } from '../../src/game'
-import { ELEMENTS_BY_SYMBOL } from '../../src/data/chemistry'
+import { ELEMENTS, ELEMENTS_BY_SYMBOL } from '../../src/data/chemistry'
 import {
 	STORAGE_SCHEMA_VERSION,
 	createDefaultPersistedState,
@@ -86,9 +86,17 @@ describe('atom wallet', () => {
 
 	it('rejects invalid spend amounts', () => {
 		const wallet = createStartingWallet(10)
-		const bad = spendAtoms(wallet, -1, 'hint_fact')
-		expect(bad.ok).toBe(false)
+		for (const amount of [-1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+			expect(spendAtoms(wallet, amount, 'hint_fact').ok).toBe(false)
+		}
 		expect(wallet.balance).toBe(10)
+	})
+
+	it('rejects invalid earn amounts', () => {
+		const wallet = createStartingWallet(10)
+		for (const amount of [-1, Number.NaN, Number.POSITIVE_INFINITY, 1.5]) {
+			expect(earnAtoms(wallet, amount, 'session_reward').ok).toBe(false)
+		}
 	})
 })
 
@@ -228,6 +236,34 @@ describe('fact hint', () => {
 		expect(denied.ok).toBe(false)
 		if (!denied.ok) {
 			expect(denied.error).toBe('insufficient_balance')
+		}
+	})
+
+	it('does not leak the answer for any element/question type', () => {
+		expect(ELEMENTS).toHaveLength(118)
+		for (const element of ELEMENTS) {
+			for (const type of [
+				'NAME_TO_SYMBOL',
+				'SYMBOL_TO_NAME',
+				'NAME_TO_ATOMIC_NUMBER',
+				'ATOMIC_NUMBER_TO_NAME',
+				'NAME_TO_GROUP',
+				'ELEMENT_TO_CLASSIFICATION',
+			] as const) {
+				if (type === 'NAME_TO_GROUP' && element.group === null) continue
+				const correct =
+					type === 'NAME_TO_SYMBOL'
+						? element.symbol
+						: type === 'SYMBOL_TO_NAME' || type === 'ATOMIC_NUMBER_TO_NAME'
+							? element.nameRu
+							: type === 'NAME_TO_ATOMIC_NUMBER'
+								? String(element.atomicNumber)
+								: type === 'NAME_TO_GROUP'
+									? String(element.group)
+									: element.category
+				const hint = getSafeFactHint(element, type, correct)
+				expect(hintLeaksAnswer(hint, type, element, correct)).toBe(false)
+			}
 		}
 	})
 })
@@ -396,6 +432,15 @@ describe('atom persistence + migration', () => {
 		expect(fresh.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
 		const remigrated = migratePersistedState(fresh)
 		expect(remigrated.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
+	})
+
+	it('does not grant atoms to an existing v2 wallet with zero balance', () => {
+		const state = migratePersistedState({
+			schemaVersion: 2,
+			atoms: { balance: 0, lifetimeEarned: 20, startingGranted: true },
+		})
+		expect(state.atoms.balance).toBe(0)
+		expect(state.atoms.startingGranted).toBe(true)
 	})
 
 	it('persists spend and session earnings; aborted session does not earn', async () => {

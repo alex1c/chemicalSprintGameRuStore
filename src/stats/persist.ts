@@ -98,7 +98,9 @@ export async function persistAtomSpend(
  * Idempotent via session.extensions.rewardsCommitted.
  * Storage failures never throw to the UI layer.
  */
-export async function persistCompletedSessionStats(
+let completionCommitQueue: Promise<void> = Promise.resolve()
+
+async function persistCompletedSessionStatsUnlocked(
 	session: GameSession,
 	storage?: KeyValueStorage,
 ): Promise<PersistCompletedSessionResult> {
@@ -115,17 +117,18 @@ export async function persistCompletedSessionStats(
 	})
 
 	if (session.extensions.rewardsCommitted) {
+		const current = await loadAppState(storage)
 		return {
-			previousBestScore: previous.bestScore,
+			previousBestScore: current.statistics.bestScore,
 			isNewBestScore: false,
-			statistics: previous,
+			statistics: current.statistics,
 			summary,
 			persisted: true,
-			atomsEarned: session.extensions.atomsEarned,
-			atomBalance: previousAtoms.balance,
+			atomsEarned: 0,
+			atomBalance: current.atoms.balance,
 			rewardBreakdown: {
 				...emptyBreakdown,
-				total: session.extensions.atomsEarned,
+				total: 0,
 			},
 		}
 	}
@@ -134,6 +137,21 @@ export async function persistCompletedSessionStats(
 		const current = await loadAppState(storage)
 		previous = current.statistics
 		previousAtoms = current.atoms
+		if (current.completedSessionIds.includes(session.id)) {
+			return {
+				previousBestScore: current.statistics.bestScore,
+				isNewBestScore: false,
+				statistics: current.statistics,
+				summary,
+				persisted: true,
+				atomsEarned: 0,
+				atomBalance: current.atoms.balance,
+				rewardBreakdown: {
+					...emptyBreakdown,
+					total: 0,
+				},
+			}
+		}
 		const applied = applyCompletedSessionToStatistics(previous, summary)
 
 		const breakdown = calculateAtomRewards({
@@ -152,6 +170,10 @@ export async function persistCompletedSessionStats(
 
 		const nextState: PersistedAppState = {
 			...current,
+			completedSessionIds: [
+				...current.completedSessionIds,
+				session.id,
+			],
 			statistics: {
 				...applied.statistics,
 				totalAtomsEarned:
@@ -191,6 +213,27 @@ export async function persistCompletedSessionStats(
 			atomBalance: earned.wallet.balance,
 			rewardBreakdown: breakdown,
 		}
+	}
+}
+
+/**
+ * Serialize local completion commits so simultaneous lifecycle callbacks
+ * cannot both observe an uncommitted session id.
+ */
+export async function persistCompletedSessionStats(
+	session: GameSession,
+	storage?: KeyValueStorage,
+): Promise<PersistCompletedSessionResult> {
+	const previousCommit = completionCommitQueue
+	let release!: () => void
+	completionCommitQueue = new Promise<void>((resolve) => {
+		release = resolve
+	})
+	await previousCommit
+	try {
+		return await persistCompletedSessionStatsUnlocked(session, storage)
+	} finally {
+		release()
 	}
 }
 

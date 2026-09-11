@@ -30,7 +30,7 @@ export function hintLeaksAnswer(
 	const nameEn = element.nameEn.toLocaleLowerCase('en-US')
 	const atomic = String(element.atomicNumber)
 
-	if (normalized.includes(answer)) {
+	if (containsAnswer(normalized, answer)) {
 		return true
 	}
 
@@ -38,15 +38,15 @@ export function hintLeaksAnswer(
 		case 'NAME_TO_SYMBOL':
 		case 'SYMBOL_TO_NAME':
 			return (
-				normalized.includes(symbol) ||
-				normalized.includes(nameRu) ||
-				normalized.includes(nameEn)
+				containsToken(normalized, symbol) ||
+				containsToken(normalized, nameRu) ||
+				containsToken(normalized, nameEn)
 			)
 		case 'NAME_TO_ATOMIC_NUMBER':
 		case 'ATOMIC_NUMBER_TO_NAME':
 			return (
-				normalized.includes(atomic) ||
-				normalized.includes(nameRu) ||
+				containsToken(normalized, atomic) ||
+				containsToken(normalized, nameRu) ||
 				normalized.includes(`№${atomic}`)
 			)
 		case 'NAME_TO_GROUP':
@@ -64,6 +64,18 @@ export function hintLeaksAnswer(
 		default:
 			return false
 	}
+}
+
+function containsAnswer(text: string, answer: string): boolean {
+	return containsToken(text, answer)
+}
+
+function containsToken(text: string, value: string): boolean {
+	const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+	return new RegExp(
+		`(?:^|[^a-zа-яё0-9])${escaped}(?:$|[^a-zа-яё0-9])`,
+		'i',
+	).test(text)
 }
 
 /**

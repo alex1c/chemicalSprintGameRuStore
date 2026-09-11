@@ -315,7 +315,6 @@ export function useClassicGameSession(
 
 			spendLockRef.current = true
 			setHintBusy(true)
-			setSession(applied.session)
 			setInsufficientMessage(null)
 
 			void persistAtomSpend(
@@ -327,7 +326,10 @@ export function useClassicGameSession(
 					return
 				}
 				if (result.ok) {
+					setSession(applied.session)
 					setWallet(result.wallet)
+				} else {
+					setInsufficientMessage('Не удалось списать атомы')
 				}
 				spendLockRef.current = false
 				setHintBusy(false)
@@ -359,9 +361,8 @@ export function useClassicGameSession(
 
 		spendLockRef.current = true
 		setHintBusy(true)
-		setSession(applied.session)
 		setInsufficientMessage(null)
-		scheduleAdvance(applied.session, GAMEPLAY_TIMING.saveStreakConfirmMs)
+		clearTimer()
 
 		void persistAtomSpend(
 			applied.cost,
@@ -372,12 +373,16 @@ export function useClassicGameSession(
 				return
 			}
 			if (result.ok) {
+				setSession(applied.session)
+				scheduleAdvance(applied.session, GAMEPLAY_TIMING.saveStreakConfirmMs)
 				setWallet(result.wallet)
-			}
+				} else {
+					setInsufficientMessage('Не удалось списать атомы')
+				}
 			spendLockRef.current = false
 			setHintBusy(false)
 		})
-	}, [hintBusy, scheduleAdvance, wallet])
+	}, [clearTimer, hintBusy, scheduleAdvance, wallet])
 
 	const restart = useCallback(() => {
 		clearTimer()
