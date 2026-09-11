@@ -222,4 +222,32 @@ describe('chemistry dataset integrity', () => {
 			expect(el.nameRu.toLowerCase().includes('унун')).toBe(false)
 		}
 	})
+
+	it('keeps classification mapping and f-block group model consistent', () => {
+		const metalCategories = new Set([
+			'alkali-metal',
+			'alkaline-earth-metal',
+			'transition-metal',
+			'post-transition-metal',
+			'lanthanide',
+			'actinide',
+		])
+		for (const el of ELEMENTS) {
+			expect(el.classification).toBe(
+				metalCategories.has(el.category)
+					? 'metal'
+					: el.category === 'metalloid'
+						? 'metalloid'
+						: 'nonmetal',
+			)
+		}
+		for (const el of ELEMENTS) {
+			if ((el.atomicNumber >= 58 && el.atomicNumber <= 71) ||
+				(el.atomicNumber >= 90 && el.atomicNumber <= 103)) {
+				expect(el.group).toBeNull()
+			}
+		}
+		expect(ELEMENTS.find((el) => el.symbol === 'La')!.group).toBe(3)
+		expect(ELEMENTS.find((el) => el.symbol === 'Ac')!.group).toBe(3)
+	})
 })

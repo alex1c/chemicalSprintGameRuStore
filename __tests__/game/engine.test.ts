@@ -133,7 +133,7 @@ describe('quiz game engine', () => {
 		const rng = createSeededRng(20260911)
 		const types = QUESTION_TYPES as readonly QuestionType[]
 		for (const type of types) {
-			for (let i = 0; i < 200; i += 1) {
+			for (let i = 0; i < 1000; i += 1) {
 				const question = generateQuestion({ rng, type })
 				expectCommonChoiceInvariants(question)
 				expect(ELEMENTS.some((el) => el.atomicNumber === question.elementAtomicNumber)).toBe(

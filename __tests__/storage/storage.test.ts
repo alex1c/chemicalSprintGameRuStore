@@ -38,6 +38,30 @@ describe('storage foundation', () => {
 		expect(migratePersistedState('bad').schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
 	})
 
+	it('sanitizes partially corrupt nested state', () => {
+		const state = migratePersistedState({
+			schemaVersion: 1,
+			settings: { soundEnabled: 'yes', hapticsEnabled: false },
+			statistics: { gamesPlayed: -1, bestScore: 'many' },
+			progress: {
+				elementMastery: { '6': 80, '8': 101, bad: 50 },
+				unlockedModes: ['classic', 42],
+			},
+			atoms: { balance: null },
+			achievements: { unlockedIds: ['first', false] },
+			daily: { dailyCompleted: 'done' },
+		})
+
+		expect(state.settings.soundEnabled).toBe(true)
+		expect(state.settings.hapticsEnabled).toBe(false)
+		expect(state.statistics.gamesPlayed).toBe(0)
+		expect(state.statistics.bestScore).toBe(0)
+		expect(state.progress.elementMastery).toEqual({ '6': 80 })
+		expect(state.progress.unlockedModes).toEqual(['classic'])
+		expect(state.achievements.unlockedIds).toEqual([])
+		expect(state.daily.dailyCompleted).toBe(false)
+	})
+
 	it('round-trips through the storage abstraction', async () => {
 		const memory = new MemoryStorage()
 		const initial = createDefaultPersistedState()

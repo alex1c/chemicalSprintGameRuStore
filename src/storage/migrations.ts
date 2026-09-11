@@ -17,6 +17,26 @@ export const MIGRATIONS: Record<number, Migration> = {
 	// 2: (raw) => ({ ...raw, schemaVersion: 2, atoms: raw.atoms ?? default }),
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function booleanOr(value: unknown, fallback: boolean): boolean {
+	return typeof value === 'boolean' ? value : fallback
+}
+
+function nonNegativeNumberOr(value: unknown, fallback: number): number {
+	return typeof value === 'number' && Number.isFinite(value) && value >= 0
+		? value
+		: fallback
+}
+
+function stringArrayOr(value: unknown, fallback: string[]): string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string')
+		? [...value]
+		: [...fallback]
+}
+
 /**
  * Migrate an unknown stored payload to the current schema version.
  * Falls back to defaults when the payload is corrupt or unusable.
@@ -47,61 +67,72 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 
 	const defaults = createDefaultPersistedState()
 
+	const settings = isRecord(doc.settings) ? doc.settings : {}
+	const statistics = isRecord(doc.statistics) ? doc.statistics : {}
+	const progress = isRecord(doc.progress) ? doc.progress : {}
+	const atoms = isRecord(doc.atoms) ? doc.atoms : {}
+	const achievements = isRecord(doc.achievements) ? doc.achievements : {}
+	const daily = isRecord(doc.daily) ? doc.daily : {}
+
 	return {
 		schemaVersion: STORAGE_SCHEMA_VERSION,
 		settings: {
 			...defaults.settings,
-			...(typeof doc.settings === 'object' && doc.settings
-				? (doc.settings as object)
-				: {}),
+			soundEnabled: booleanOr(settings.soundEnabled, defaults.settings.soundEnabled),
+			hapticsEnabled: booleanOr(settings.hapticsEnabled, defaults.settings.hapticsEnabled),
+			reduceMotion: booleanOr(settings.reduceMotion, defaults.settings.reduceMotion),
+			locale: settings.locale === 'ru' ? 'ru' : defaults.settings.locale,
 		},
 		statistics: {
 			...defaults.statistics,
-			...(typeof doc.statistics === 'object' && doc.statistics
-				? (doc.statistics as object)
-				: {}),
+			gamesPlayed: nonNegativeNumberOr(statistics.gamesPlayed, defaults.statistics.gamesPlayed),
+			questionsAnswered: nonNegativeNumberOr(statistics.questionsAnswered, defaults.statistics.questionsAnswered),
+			correctAnswers: nonNegativeNumberOr(statistics.correctAnswers, defaults.statistics.correctAnswers),
+			bestScore: nonNegativeNumberOr(statistics.bestScore, defaults.statistics.bestScore),
+			bestStreak: nonNegativeNumberOr(statistics.bestStreak, defaults.statistics.bestStreak),
 		},
 		progress: {
 			...defaults.progress,
-			...(typeof doc.progress === 'object' && doc.progress
-				? (doc.progress as object)
-				: {}),
+			unlockedModes: stringArrayOr(progress.unlockedModes, defaults.progress.unlockedModes),
 			elementMastery:
-				typeof doc.progress === 'object' &&
-				doc.progress &&
-				typeof (doc.progress as PersistedAppState['progress']).elementMastery ===
-					'object'
-					? {
-							...(doc.progress as PersistedAppState['progress']).elementMastery,
+			isRecord(progress.elementMastery)
+				? Object.entries(progress.elementMastery).reduce<Record<string, number>>(
+					(result, [key, value]) => {
+						if (
+							/^\d+$/.test(key) &&
+							typeof value === 'number' &&
+							Number.isFinite(value) &&
+							value >= 0 &&
+							value <= 100
+						) {
+							result[key] = value
 						}
-					: {},
-			unlockedModes:
-				typeof doc.progress === 'object' &&
-				doc.progress &&
-				Array.isArray((doc.progress as PersistedAppState['progress']).unlockedModes)
-					? [...(doc.progress as PersistedAppState['progress']).unlockedModes]
-					: [...defaults.progress.unlockedModes],
+						return result
+					},
+					{},
+				)
+				: {},
 		},
 		atoms: {
 			...defaults.atoms,
-			...(typeof doc.atoms === 'object' && doc.atoms ? (doc.atoms as object) : {}),
+			balance: nonNegativeNumberOr(atoms.balance, defaults.atoms.balance),
+			lifetimeEarned: nonNegativeNumberOr(atoms.lifetimeEarned, defaults.atoms.lifetimeEarned),
 		},
 		achievements: {
 			unlockedIds:
-				typeof doc.achievements === 'object' &&
-				doc.achievements &&
-				Array.isArray(
-					(doc.achievements as PersistedAppState['achievements']).unlockedIds,
-				)
-					? [
-							...(doc.achievements as PersistedAppState['achievements'])
-								.unlockedIds,
-						]
-					: [],
+				stringArrayOr(achievements.unlockedIds, defaults.achievements.unlockedIds),
 		},
 		daily: {
 			...defaults.daily,
-			...(typeof doc.daily === 'object' && doc.daily ? (doc.daily as object) : {}),
+			lastDailyDate:
+				typeof daily.lastDailyDate === 'string' || daily.lastDailyDate === null
+					? daily.lastDailyDate
+					: defaults.daily.lastDailyDate,
+			dailySeed:
+				typeof daily.dailySeed === 'number' && Number.isFinite(daily.dailySeed)
+					? daily.dailySeed
+					: defaults.daily.dailySeed,
+			dailyCompleted: booleanOr(daily.dailyCompleted, defaults.daily.dailyCompleted),
 		},
 		updatedAt:
 			typeof doc.updatedAt === 'string' ? doc.updatedAt : defaults.updatedAt,
