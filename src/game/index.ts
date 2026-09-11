@@ -24,6 +24,7 @@ export {
 	submitCurrentAnswer,
 	advanceAfterFeedback,
 	answerCurrentQuestion,
+	markRewardsCommitted,
 	getSessionStats,
 	getCurrentQuestion,
 	getLatestAnswer,
@@ -41,6 +42,12 @@ export type {
 	SessionAnswerRecord,
 	QuestionMetadata,
 	SessionPhase,
+	SessionHintState,
+	SessionEconomyExtensions,
 } from './types'
 
-export { QUESTION_TYPES } from './types'
+export {
+	QUESTION_TYPES,
+	createInitialHintState,
+	createInitialEconomyExtensions,
+} from './types'

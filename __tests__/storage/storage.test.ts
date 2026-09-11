@@ -7,6 +7,7 @@ import {
 	clearAppState,
 	type KeyValueStorage,
 } from '../../src/storage'
+import { ATOM_ECONOMY_CONFIG } from '../../src/economy'
 
 class MemoryStorage implements KeyValueStorage {
 	private readonly map = new Map<string, string>()
@@ -25,17 +26,22 @@ class MemoryStorage implements KeyValueStorage {
 }
 
 describe('storage foundation', () => {
-	it('creates versioned default state', () => {
+	it('creates versioned default state with starting atoms', () => {
 		const state = createDefaultPersistedState()
 		expect(state.schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
 		expect(state.settings.locale).toBe('ru')
-		expect(state.atoms.balance).toBe(0)
+		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
+		expect(state.atoms.startingGranted).toBe(true)
 		expect(state.progress.unlockedModes).toContain('classic')
 	})
 
 	it('migrates empty/corrupt payloads to defaults', () => {
-		expect(migratePersistedState(null).schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
-		expect(migratePersistedState('bad').schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
+		expect(migratePersistedState(null).schemaVersion).toBe(
+			STORAGE_SCHEMA_VERSION,
+		)
+		expect(migratePersistedState('bad').schemaVersion).toBe(
+			STORAGE_SCHEMA_VERSION,
+		)
 	})
 
 	it('sanitizes partially corrupt nested state', () => {
@@ -60,6 +66,8 @@ describe('storage foundation', () => {
 		expect(state.progress.unlockedModes).toEqual(['classic'])
 		expect(state.achievements.unlockedIds).toEqual([])
 		expect(state.daily.dailyCompleted).toBe(false)
+		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
+		expect(state.schemaVersion).toBe(2)
 	})
 
 	it('round-trips through the storage abstraction', async () => {
@@ -75,5 +83,6 @@ describe('storage foundation', () => {
 		await clearAppState(memory)
 		const reset = await loadAppState(memory)
 		expect(reset.statistics.gamesPlayed).toBe(0)
+		expect(reset.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
 	})
 })

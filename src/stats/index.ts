@@ -10,7 +10,12 @@ export type {
 
 export {
 	persistCompletedSessionStats,
+	persistAtomSpend,
+	commitSessionAtomRewards,
 	loadHomeStatistics,
+	loadAtomWallet,
+	toEconomyWallet,
+	toPersistedAtoms,
 } from './persist'
 
 export type { PersistCompletedSessionResult } from './persist'

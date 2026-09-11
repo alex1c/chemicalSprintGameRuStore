@@ -1,11 +1,13 @@
 import { useCallback } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import {
 	AnswerButton,
 	AnswerFeedback,
+	AtomBalanceChip,
 	GameHud,
 	GameProgress,
+	HintPanel,
 	QuestionCard,
 	type AnswerButtonState,
 } from '../components/game'
@@ -23,12 +25,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Game'>
  */
 export function GameScreen({ navigation, route }: Props) {
 	const sessionKey = route.params?.sessionKey ?? 0
-	return (
-		<ClassicGamePlay
-			key={sessionKey}
-			navigation={navigation}
-		/>
-	)
+	return <ClassicGamePlay key={sessionKey} navigation={navigation} />
 }
 
 function ClassicGamePlay({
@@ -48,6 +45,9 @@ function ClassicGamePlay({
 				previousBestScore: result.previousBestScore,
 				isNewBestScore: result.isNewBestScore,
 				persisted: result.persisted,
+				atomsEarned: result.atomsEarned,
+				atomBalance: result.atomBalance,
+				rewardBreakdown: result.rewardBreakdown,
 			})
 		},
 		[navigation],
@@ -60,9 +60,19 @@ function ClassicGamePlay({
 		feedback,
 		isAnswerLocked,
 		displayQuestionNumber,
+		atomBalance,
+		hintsOpen,
+		setHintsOpen,
+		hintBusy,
+		insufficientMessage,
 		submitAnswer,
+		useHint,
+		useSaveStreak,
+		canAffordHint,
+		isHintAvailable,
 	} = useClassicGameSession(handleComplete)
 
+	const hintState = session.extensions.hintState
 	const progressCurrent =
 		session.phase === 'feedback'
 			? session.answers.length
@@ -70,15 +80,20 @@ function ClassicGamePlay({
 
 	return (
 		<Screen edges={['top', 'left', 'right', 'bottom']}>
-			<GameHud
-				questionNumber={displayQuestionNumber}
-				questionCount={session.questionCount}
-				streak={stats.currentStreak}
-				score={stats.score}
-				scoreDelta={
-					session.phase === 'feedback' ? session.lastPointsEarned : 0
-				}
-			/>
+			<View style={styles.topRow}>
+				<GameHud
+					questionNumber={displayQuestionNumber}
+					questionCount={session.questionCount}
+					streak={stats.currentStreak}
+					score={stats.score}
+					scoreDelta={
+						session.phase === 'feedback'
+							? session.lastPointsEarned
+							: 0
+					}
+				/>
+				<AtomBalanceChip balance={atomBalance} compact />
+			</View>
 			<View style={styles.progressWrap}>
 				<GameProgress
 					current={progressCurrent}
@@ -98,10 +113,35 @@ function ClassicGamePlay({
 							typeLabel={question.metadata.typeLabelRu}
 						/>
 
+						{hintState.factText ? (
+							<View style={styles.factCard}>
+								<Text style={styles.factTitle}>💡 Подсказка</Text>
+								<Text style={styles.factText}>
+									{hintState.factText}
+								</Text>
+							</View>
+						) : null}
+
+						{hintState.awaitingSecondAttempt ? (
+							<AnswerFeedback
+								correct={false}
+								title="Попробуй ещё раз"
+								detailLine=""
+								explanation=""
+								awaitingSecondAttempt
+							/>
+						) : null}
+
 						<View style={styles.choices}>
-							{question.choices.map((choice) => {
+							{question.choices.map((choice, index) => {
 								let state: AnswerButtonState = 'idle'
-								if (feedback) {
+								if (hintState.hiddenChoiceIndexes.includes(index)) {
+									state = 'hidden'
+								} else if (
+									hintState.eliminatedChoices.includes(choice)
+								) {
+									state = 'wrong'
+								} else if (feedback) {
 									if (choice === feedback.correctAnswer) {
 										state = 'correct'
 									} else if (
@@ -129,6 +169,23 @@ function ClassicGamePlay({
 							})}
 						</View>
 
+						{!isAnswerLocked ? (
+							<HintPanel
+								open={hintsOpen}
+								onToggle={() => setHintsOpen(!hintsOpen)}
+								disabled={hintBusy}
+								atomBalance={atomBalance}
+								canAffordHint={canAffordHint}
+								isHintAvailable={isHintAvailable}
+								onUseHint={useHint}
+								insufficientMessage={insufficientMessage}
+								secondChanceActive={
+									hintState.secondChanceActivated &&
+									!hintState.secondChanceConsumed
+								}
+							/>
+						) : null}
+
 						{feedback ? (
 							<View style={styles.feedback}>
 								<AnswerFeedback
@@ -136,6 +193,15 @@ function ClassicGamePlay({
 									title={feedback.title}
 									detailLine={feedback.detailLine}
 									explanation={feedback.explanation}
+									saveStreakAvailable={
+										feedback.saveStreakAvailable
+									}
+									saveStreakUsed={feedback.saveStreakUsed}
+									streakBeforeWrong={feedback.streakBeforeWrong}
+									canAffordSaveStreak={canAffordHint(
+										'saveStreak',
+									)}
+									onSaveStreak={useSaveStreak}
 								/>
 							</View>
 						) : null}
@@ -147,6 +213,9 @@ function ClassicGamePlay({
 }
 
 const styles = StyleSheet.create({
+	topRow: {
+		gap: theme.spacing.sm,
+	},
 	progressWrap: {
 		marginTop: theme.spacing.sm,
 		marginBottom: theme.spacing.md,
@@ -160,5 +229,22 @@ const styles = StyleSheet.create({
 	},
 	feedback: {
 		marginTop: theme.spacing.xs,
+	},
+	factCard: {
+		backgroundColor: theme.colors.accentSoft,
+		borderRadius: theme.radius.md,
+		padding: theme.spacing.md,
+		borderWidth: 1,
+		borderColor: theme.colors.accent,
+	},
+	factTitle: {
+		...theme.typography.subtitle,
+		fontSize: 15,
+		color: theme.colors.accent,
+		marginBottom: theme.spacing.xxs,
+	},
+	factText: {
+		...theme.typography.body,
+		color: theme.colors.textPrimary,
 	},
 })

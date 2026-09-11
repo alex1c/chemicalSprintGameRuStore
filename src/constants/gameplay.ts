@@ -7,6 +7,13 @@ export const GAMEPLAY_TIMING = {
 	correctFeedbackMs: 850,
 	/** Pause after an incorrect answer before auto-advancing (ms). */
 	wrongFeedbackMs: 1400,
+	/**
+	 * Wrong-answer pause when Save Streak is offered.
+	 * Gives the player time to spend atoms without a modal trap.
+	 */
+	wrongFeedbackWithSaveStreakMs: 2600,
+	/** Extra pause after a successful Save Streak restore (ms). */
+	saveStreakConfirmMs: 900,
 } as const
 
 /** Minimum touch target size for primary interactive controls (dp). */

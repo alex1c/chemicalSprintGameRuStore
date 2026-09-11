@@ -7,13 +7,14 @@ import {
 } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
+import { AtomBalanceChip } from '../components/game'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { APP_DISPLAY_NAME } from '../constants/app'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
 import type { RootStackParamList } from '../navigation/types'
-import { loadHomeStatistics } from '../stats'
+import { loadAtomWallet, loadHomeStatistics } from '../stats'
 import { DEFAULT_STATISTICS, type AppStatistics } from '../storage'
 import { theme } from '../theme'
 
@@ -24,28 +25,37 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>
  */
 export function HomeScreen({ navigation }: Props) {
 	const [stats, setStats] = useState<AppStatistics>(DEFAULT_STATISTICS)
+	const [atomBalance, setAtomBalance] = useState(0)
 	const [ready, setReady] = useState(false)
 
-	const refreshStats = useCallback(async () => {
-		const next = await loadHomeStatistics()
-		setStats(next)
+	const refresh = useCallback(async () => {
+		const [nextStats, wallet] = await Promise.all([
+			loadHomeStatistics(),
+			loadAtomWallet(),
+		])
+		setStats(nextStats)
+		setAtomBalance(wallet.balance)
 		setReady(true)
 	}, [])
 
 	useFocusEffect(
 		useCallback(() => {
-			void refreshStats()
-		}, [refreshStats]),
+			void refresh()
+		}, [refresh]),
 	)
 
 	useEffect(() => {
-		void refreshStats()
-	}, [refreshStats])
+		void refresh()
+	}, [refresh])
 
 	const hasHistory = stats.gamesPlayed > 0
 
 	return (
 		<Screen>
+			<View style={styles.balanceRow}>
+				<AtomBalanceChip balance={ready ? atomBalance : 0} />
+			</View>
+
 			<View style={styles.hero}>
 				<Text style={styles.atom}>⚛</Text>
 				<Text style={styles.title}>{APP_DISPLAY_NAME}</Text>
@@ -134,9 +144,13 @@ function SecondaryLink({
 }
 
 const styles = StyleSheet.create({
+	balanceRow: {
+		alignItems: 'flex-end',
+		marginBottom: theme.spacing.sm,
+	},
 	hero: {
 		alignItems: 'center',
-		marginTop: theme.spacing.xl,
+		marginTop: theme.spacing.md,
 		marginBottom: theme.spacing.lg,
 	},
 	atom: {

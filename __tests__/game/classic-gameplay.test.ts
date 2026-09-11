@@ -210,6 +210,8 @@ describe('classic sprint gameplay domain', () => {
 		const state = createDefaultPersistedState()
 		expect(state.statistics.totalWrong).toBe(0)
 		expect(state.statistics.bestAccuracy).toBe(0)
+		expect(state.atoms.startingGranted).toBe(true)
+		expect(state.statistics.hintsUsed.total).toBe(0)
 	})
 
 	it('seeded classic sessions are reproducible', () => {

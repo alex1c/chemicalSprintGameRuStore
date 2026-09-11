@@ -7,6 +7,7 @@ export {
 	DEFAULT_ATOMS,
 	DEFAULT_ACHIEVEMENTS,
 	DEFAULT_DAILY,
+	DEFAULT_HINT_USAGE,
 } from './schema'
 
 export type {
@@ -17,6 +18,7 @@ export type {
 	AtomsWallet,
 	AchievementsState,
 	DailyState,
+	HintUsageStats,
 } from './schema'
 
 export { migratePersistedState, MIGRATIONS } from './migrations'

@@ -64,6 +64,9 @@ export function applyCompletedSessionToStatistics(
 			bestScore: Math.max(previous.bestScore, summary.score),
 			bestAccuracy: Math.max(previous.bestAccuracy, summary.accuracy),
 			bestStreak: Math.max(previous.bestStreak, summary.bestStreak),
+			totalAtomsEarned: previous.totalAtomsEarned,
+			totalAtomsSpent: previous.totalAtomsSpent,
+			hintsUsed: { ...previous.hintsUsed },
 		},
 	}
 }

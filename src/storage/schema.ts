@@ -3,13 +3,23 @@
  * Keep React components free of raw storage access.
  */
 
-export const STORAGE_SCHEMA_VERSION = 1 as const
+import { ATOM_ECONOMY_CONFIG } from '../economy/config'
+
+export const STORAGE_SCHEMA_VERSION = 2 as const
 
 export interface AppSettings {
 	soundEnabled: boolean
 	hapticsEnabled: boolean
 	reduceMotion: boolean
 	locale: 'ru'
+}
+
+export interface HintUsageStats {
+	fiftyFifty: number
+	fact: number
+	secondChance: number
+	saveStreak: number
+	total: number
 }
 
 export interface AppStatistics {
@@ -23,6 +33,11 @@ export interface AppStatistics {
 	/** Best session accuracy in range [0, 1]. */
 	bestAccuracy: number
 	bestStreak: number
+	/** Lifetime atoms earned (including starting grant). */
+	totalAtomsEarned: number
+	/** Lifetime atoms spent on hints. */
+	totalAtomsSpent: number
+	hintsUsed: HintUsageStats
 }
 
 export interface AppProgress {
@@ -34,6 +49,9 @@ export interface AppProgress {
 export interface AtomsWallet {
 	balance: number
 	lifetimeEarned: number
+	lifetimeSpent: number
+	/** Ensures startingAtoms are granted only once. */
+	startingGranted: boolean
 }
 
 export interface AchievementsState {
@@ -67,6 +85,14 @@ export const DEFAULT_SETTINGS: AppSettings = {
 	locale: 'ru',
 }
 
+export const DEFAULT_HINT_USAGE: HintUsageStats = {
+	fiftyFifty: 0,
+	fact: 0,
+	secondChance: 0,
+	saveStreak: 0,
+	total: 0,
+}
+
 export const DEFAULT_STATISTICS: AppStatistics = {
 	gamesPlayed: 0,
 	questionsAnswered: 0,
@@ -75,6 +101,9 @@ export const DEFAULT_STATISTICS: AppStatistics = {
 	bestScore: 0,
 	bestAccuracy: 0,
 	bestStreak: 0,
+	totalAtomsEarned: ATOM_ECONOMY_CONFIG.startingAtoms,
+	totalAtomsSpent: 0,
+	hintsUsed: { ...DEFAULT_HINT_USAGE },
 }
 
 export const DEFAULT_PROGRESS: AppProgress = {
@@ -82,9 +111,12 @@ export const DEFAULT_PROGRESS: AppProgress = {
 	unlockedModes: ['classic'],
 }
 
+/** Fresh installs receive the starting wallet grant immediately. */
 export const DEFAULT_ATOMS: AtomsWallet = {
-	balance: 0,
-	lifetimeEarned: 0,
+	balance: ATOM_ECONOMY_CONFIG.startingAtoms,
+	lifetimeEarned: ATOM_ECONOMY_CONFIG.startingAtoms,
+	lifetimeSpent: 0,
+	startingGranted: true,
 }
 
 export const DEFAULT_ACHIEVEMENTS: AchievementsState = {
@@ -103,7 +135,10 @@ export function createDefaultPersistedState(
 	return {
 		schemaVersion: STORAGE_SCHEMA_VERSION,
 		settings: { ...DEFAULT_SETTINGS },
-		statistics: { ...DEFAULT_STATISTICS },
+		statistics: {
+			...DEFAULT_STATISTICS,
+			hintsUsed: { ...DEFAULT_HINT_USAGE },
+		},
 		progress: {
 			elementMastery: {},
 			unlockedModes: [...DEFAULT_PROGRESS.unlockedModes],

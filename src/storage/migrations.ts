@@ -1,6 +1,9 @@
+import { ATOM_ECONOMY_CONFIG } from '../economy/config'
 import {
 	createDefaultPersistedState,
+	DEFAULT_HINT_USAGE,
 	STORAGE_SCHEMA_VERSION,
+	type HintUsageStats,
 	type PersistedAppState,
 } from './schema'
 
@@ -10,11 +13,56 @@ export type Migration = (
 
 /**
  * Ordered migrations from older schema versions to the current one.
- * Add a new entry whenever STORAGE_SCHEMA_VERSION increments.
  */
 export const MIGRATIONS: Record<number, Migration> = {
-	// Example future migration:
-	// 2: (raw) => ({ ...raw, schemaVersion: 2, atoms: raw.atoms ?? default }),
+	/**
+	 * v2: atom economy + hint stats.
+	 * Grants startingAtoms exactly once for legacy installs.
+	 */
+	2: (raw) => {
+		const previousAtoms = isRecord(raw.atoms) ? raw.atoms : {}
+		const previousBalance = nonNegativeNumberOr(previousAtoms.balance, 0)
+		const previousEarned = nonNegativeNumberOr(
+			previousAtoms.lifetimeEarned,
+			previousBalance,
+		)
+		const alreadyGranted = previousAtoms.startingGranted === true
+
+		const starting = ATOM_ECONOMY_CONFIG.startingAtoms
+		const shouldGrant = !alreadyGranted
+
+		const balance = shouldGrant
+			? previousBalance + starting
+			: previousBalance
+		const lifetimeEarned = shouldGrant
+			? previousEarned + starting
+			: previousEarned
+
+		const previousStats = isRecord(raw.statistics) ? raw.statistics : {}
+
+		return {
+			...raw,
+			schemaVersion: 2,
+			atoms: {
+				balance,
+				lifetimeEarned,
+				lifetimeSpent: nonNegativeNumberOr(previousAtoms.lifetimeSpent, 0),
+				startingGranted: true,
+			},
+			statistics: {
+				...previousStats,
+				totalAtomsEarned: nonNegativeNumberOr(
+					previousStats.totalAtomsEarned,
+					lifetimeEarned,
+				),
+				totalAtomsSpent: nonNegativeNumberOr(
+					previousStats.totalAtomsSpent,
+					0,
+				),
+				hintsUsed: sanitizeHintUsage(previousStats.hintsUsed),
+			},
+		}
+	},
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -45,10 +93,23 @@ function clampUnitInterval(value: unknown, fallback: number): number {
 	return value
 }
 
-function stringArrayOr(value: unknown, fallback: string[]): string[] {
-	return Array.isArray(value) && value.every((item) => typeof item === 'string')
-		? [...value]
-		: [...fallback]
+function sanitizeHintUsage(value: unknown): HintUsageStats {
+	const record = isRecord(value) ? value : {}
+	const fiftyFifty = nonNegativeNumberOr(record.fiftyFifty, 0)
+	const fact = nonNegativeNumberOr(record.fact, 0)
+	const secondChance = nonNegativeNumberOr(record.secondChance, 0)
+	const saveStreak = nonNegativeNumberOr(record.saveStreak, 0)
+	const total = nonNegativeNumberOr(
+		record.total,
+		fiftyFifty + fact + secondChance + saveStreak,
+	)
+	return {
+		fiftyFifty,
+		fact,
+		secondChance,
+		saveStreak,
+		total,
+	}
 }
 
 /**
@@ -71,7 +132,11 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 		return fallback
 	}
 
-	for (let version = incomingVersion + 1; version <= STORAGE_SCHEMA_VERSION; version += 1) {
+	for (
+		let version = incomingVersion + 1;
+		version <= STORAGE_SCHEMA_VERSION;
+		version += 1
+	) {
 		const migrate = MIGRATIONS[version]
 		if (migrate) {
 			doc = migrate(doc)
@@ -88,13 +153,39 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 	const achievements = isRecord(doc.achievements) ? doc.achievements : {}
 	const daily = isRecord(doc.daily) ? doc.daily : {}
 
+	const sanitizedAtomsBalance = nonNegativeNumberOr(
+		atoms.balance,
+		defaults.atoms.balance,
+	)
+	const sanitizedLifetimeEarned = nonNegativeNumberOr(
+		atoms.lifetimeEarned,
+		defaults.atoms.lifetimeEarned,
+	)
+	const sanitizedLifetimeSpent = nonNegativeNumberOr(
+		atoms.lifetimeSpent,
+		defaults.atoms.lifetimeSpent,
+	)
+	const startingGranted = booleanOr(
+		atoms.startingGranted,
+		defaults.atoms.startingGranted,
+	)
+
 	return {
 		schemaVersion: STORAGE_SCHEMA_VERSION,
 		settings: {
 			...defaults.settings,
-			soundEnabled: booleanOr(settings.soundEnabled, defaults.settings.soundEnabled),
-			hapticsEnabled: booleanOr(settings.hapticsEnabled, defaults.settings.hapticsEnabled),
-			reduceMotion: booleanOr(settings.reduceMotion, defaults.settings.reduceMotion),
+			soundEnabled: booleanOr(
+				settings.soundEnabled,
+				defaults.settings.soundEnabled,
+			),
+			hapticsEnabled: booleanOr(
+				settings.hapticsEnabled,
+				defaults.settings.hapticsEnabled,
+			),
+			reduceMotion: booleanOr(
+				settings.reduceMotion,
+				defaults.settings.reduceMotion,
+			),
 			locale: settings.locale === 'ru' ? 'ru' : defaults.settings.locale,
 		},
 		statistics: {
@@ -127,14 +218,28 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 				statistics.bestStreak,
 				defaults.statistics.bestStreak,
 			),
+			totalAtomsEarned: nonNegativeNumberOr(
+				statistics.totalAtomsEarned,
+				sanitizedLifetimeEarned,
+			),
+			totalAtomsSpent: nonNegativeNumberOr(
+				statistics.totalAtomsSpent,
+				sanitizedLifetimeSpent,
+			),
+			hintsUsed: sanitizeHintUsage(statistics.hintsUsed) ?? {
+				...DEFAULT_HINT_USAGE,
+			},
 		},
 		progress: {
 			...defaults.progress,
-			unlockedModes: stringArrayOr(progress.unlockedModes, defaults.progress.unlockedModes),
-			elementMastery:
-			isRecord(progress.elementMastery)
-				? Object.entries(progress.elementMastery).reduce<Record<string, number>>(
-					(result, [key, value]) => {
+			unlockedModes: stringArrayOr(
+				progress.unlockedModes,
+				defaults.progress.unlockedModes,
+			),
+			elementMastery: isRecord(progress.elementMastery)
+				? Object.entries(progress.elementMastery).reduce<
+						Record<string, number>
+					>((result, [key, value]) => {
 						if (
 							/^\d+$/.test(key) &&
 							typeof value === 'number' &&
@@ -145,33 +250,45 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 							result[key] = value
 						}
 						return result
-					},
-					{},
-				)
+					}, {})
 				: {},
 		},
 		atoms: {
-			...defaults.atoms,
-			balance: nonNegativeNumberOr(atoms.balance, defaults.atoms.balance),
-			lifetimeEarned: nonNegativeNumberOr(atoms.lifetimeEarned, defaults.atoms.lifetimeEarned),
+			balance: sanitizedAtomsBalance,
+			lifetimeEarned: sanitizedLifetimeEarned,
+			lifetimeSpent: sanitizedLifetimeSpent,
+			startingGranted,
 		},
 		achievements: {
-			unlockedIds:
-				stringArrayOr(achievements.unlockedIds, defaults.achievements.unlockedIds),
+			unlockedIds: stringArrayOr(
+				achievements.unlockedIds,
+				defaults.achievements.unlockedIds,
+			),
 		},
 		daily: {
 			...defaults.daily,
 			lastDailyDate:
-				typeof daily.lastDailyDate === 'string' || daily.lastDailyDate === null
+				typeof daily.lastDailyDate === 'string' ||
+				daily.lastDailyDate === null
 					? daily.lastDailyDate
 					: defaults.daily.lastDailyDate,
 			dailySeed:
-				typeof daily.dailySeed === 'number' && Number.isFinite(daily.dailySeed)
+				typeof daily.dailySeed === 'number' &&
+				Number.isFinite(daily.dailySeed)
 					? daily.dailySeed
 					: defaults.daily.dailySeed,
-			dailyCompleted: booleanOr(daily.dailyCompleted, defaults.daily.dailyCompleted),
+			dailyCompleted: booleanOr(
+				daily.dailyCompleted,
+				defaults.daily.dailyCompleted,
+			),
 		},
 		updatedAt:
 			typeof doc.updatedAt === 'string' ? doc.updatedAt : defaults.updatedAt,
 	}
+}
+
+function stringArrayOr(value: unknown, fallback: string[]): string[] {
+	return Array.isArray(value) && value.every((item) => typeof item === 'string')
+		? [...value]
+		: [...fallback]
 }

@@ -1,5 +1,6 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
 import { ROUTES } from '../constants/routes'
+import type { AtomRewardBreakdown } from '../economy'
 
 /**
  * Params passed to Result after a completed classic sprint.
@@ -15,6 +16,9 @@ export type ResultScreenParams = {
 	previousBestScore: number
 	isNewBestScore: boolean
 	persisted: boolean
+	atomsEarned: number
+	atomBalance: number
+	rewardBreakdown: AtomRewardBreakdown
 }
 
 /**

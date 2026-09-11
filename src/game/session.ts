@@ -1,4 +1,5 @@
 import { CLASSIC_SESSION_QUESTION_COUNT } from '../constants/app'
+import { resetHintStateForNextQuestion } from '../economy/hints'
 import { generateQuestionSet } from './questions'
 import { evaluateAnswer } from './evaluate'
 import { createSeededRng, defaultRng, type Rng } from './rng'
@@ -7,11 +8,12 @@ import {
 	SCORING_CONFIG,
 	type ScoringConfig,
 } from './scoring'
-import type {
-	AnswerValue,
-	GameSession,
-	QuestionType,
-	SessionStats,
+import {
+	createInitialEconomyExtensions,
+	type AnswerValue,
+	type GameSession,
+	type QuestionType,
+	type SessionStats,
 } from './types'
 
 export interface CreateSessionOptions {
@@ -57,17 +59,13 @@ export function createGameSession(
 		phase: questionCount === 0 ? 'complete' : 'question',
 		isComplete: questionCount === 0,
 		lastPointsEarned: 0,
-		extensions: {
-			atomsEarned: 0,
-			hintsUsed: 0,
-			elapsedMs: 0,
-		},
+		extensions: createInitialEconomyExtensions(),
 	}
 }
 
 /**
- * Submit an answer for the current question without advancing the index.
- * Enters the feedback phase so UI can show result before auto-next.
+ * Submit an answer for the current question.
+ * With an active second chance, the first wrong answer stays in question phase.
  * Double-submit while in feedback/complete is a no-op.
  */
 export function submitCurrentAnswer(
@@ -88,13 +86,46 @@ export function submitCurrentAnswer(
 		}
 	}
 
+	const hint = session.extensions.hintState
+	if (hint.eliminatedChoices.includes(selectedAnswer)) {
+		return session
+	}
+	if (hint.hiddenChoiceIndexes.some((index) => question.choices[index] === selectedAnswer)) {
+		return session
+	}
+
 	const evaluation = evaluateAnswer(question, selectedAnswer)
+	const streakBeforeAnswer = session.currentStreak
+
+	// Second chance: first wrong does not finish the question or reset streak.
+	if (
+		!evaluation.correct &&
+		hint.secondChanceActivated &&
+		!hint.secondChanceConsumed
+	) {
+		return {
+			...session,
+			phase: 'question',
+			lastPointsEarned: 0,
+			extensions: {
+				...session.extensions,
+				hintState: {
+					...hint,
+					secondChanceConsumed: true,
+					awaitingSecondAttempt: true,
+					eliminatedChoices: [...hint.eliminatedChoices, selectedAnswer],
+				},
+			},
+		}
+	}
+
 	let currentStreak = session.currentStreak
 	let bestStreak = session.bestStreak
 	let score = session.score
 	let correctCount = session.correctCount
 	let wrongCount = session.wrongCount
 	let pointsEarned = 0
+	let streakBeforeWrong: number | null = null
 
 	if (evaluation.correct) {
 		currentStreak += 1
@@ -103,6 +134,7 @@ export function submitCurrentAnswer(
 		pointsEarned = computeCorrectAnswerPoints(currentStreak, scoring)
 		score += pointsEarned
 	} else {
+		streakBeforeWrong = streakBeforeAnswer
 		currentStreak = 0
 		wrongCount += 1
 	}
@@ -119,6 +151,7 @@ export function submitCurrentAnswer(
 				correctAnswer: question.correctAnswer,
 				correct: evaluation.correct,
 				pointsEarned,
+				usedSecondChance: hint.secondChanceConsumed,
 			},
 		],
 		correctCount,
@@ -129,6 +162,14 @@ export function submitCurrentAnswer(
 		lastPointsEarned: pointsEarned,
 		phase: 'feedback',
 		isComplete: false,
+		extensions: {
+			...session.extensions,
+			hintState: {
+				...hint,
+				awaitingSecondAttempt: false,
+				streakBeforeWrong,
+			},
+		},
 	}
 }
 
@@ -151,13 +192,15 @@ export function advanceAfterFeedback(session: GameSession): GameSession {
 		}
 	}
 
-	return {
+	const advanced: GameSession = {
 		...session,
 		currentIndex: nextIndex,
 		phase: 'question',
 		lastPointsEarned: 0,
 		isComplete: false,
 	}
+
+	return resetHintStateForNextQuestion(advanced)
 }
 
 /**
@@ -174,6 +217,26 @@ export function answerCurrentQuestion(
 		return afterSubmit
 	}
 	return advanceAfterFeedback(afterSubmit)
+}
+
+/**
+ * Mark rewards as committed so Result replay cannot double-earn.
+ */
+export function markRewardsCommitted(
+	session: GameSession,
+	atomsEarned: number,
+): GameSession {
+	if (session.extensions.rewardsCommitted) {
+		return session
+	}
+	return {
+		...session,
+		extensions: {
+			...session.extensions,
+			atomsEarned,
+			rewardsCommitted: true,
+		},
+	}
 }
 
 /**

@@ -2,7 +2,12 @@ import { Pressable, StyleSheet, Text } from 'react-native'
 import { MIN_TOUCH_TARGET } from '../../constants/gameplay'
 import { theme } from '../../theme'
 
-export type AnswerButtonState = 'idle' | 'correct' | 'wrong' | 'disabled'
+export type AnswerButtonState =
+	| 'idle'
+	| 'correct'
+	| 'wrong'
+	| 'disabled'
+	| 'hidden'
 
 interface AnswerButtonProps {
 	label: string
@@ -11,7 +16,7 @@ interface AnswerButtonProps {
 }
 
 /**
- * Large answer choice button with post-answer color states.
+ * Large answer choice button with post-answer and 50/50 faded states.
  */
 export function AnswerButton({ label, state, onPress }: AnswerButtonProps) {
 	const locked = state !== 'idle'
@@ -28,6 +33,7 @@ export function AnswerButton({ label, state, onPress }: AnswerButtonProps) {
 				state === 'correct' ? styles.correct : null,
 				state === 'wrong' ? styles.wrong : null,
 				state === 'disabled' ? styles.disabled : null,
+				state === 'hidden' ? styles.hidden : null,
 				pressed && state === 'idle' ? styles.pressed : null,
 			]}
 		>
@@ -37,6 +43,7 @@ export function AnswerButton({ label, state, onPress }: AnswerButtonProps) {
 					state === 'correct' || state === 'wrong'
 						? styles.labelInverse
 						: null,
+					state === 'hidden' ? styles.labelHidden : null,
 				]}
 			>
 				{label}
@@ -71,6 +78,10 @@ const styles = StyleSheet.create({
 	disabled: {
 		opacity: 0.55,
 	},
+	hidden: {
+		opacity: 0.28,
+		backgroundColor: theme.colors.surfaceMuted,
+	},
 	label: {
 		...theme.typography.button,
 		color: theme.colors.textPrimary,
@@ -78,5 +89,8 @@ const styles = StyleSheet.create({
 	},
 	labelInverse: {
 		color: theme.colors.textInverse,
+	},
+	labelHidden: {
+		color: theme.colors.textSecondary,
 	},
 })
