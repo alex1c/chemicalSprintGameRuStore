@@ -19,6 +19,8 @@ export interface GenerateQuestionOptions {
 	type?: QuestionType
 	/** Optional pool override (tests / future modes). */
 	elements?: readonly ChemicalElement[]
+	/** Prefer not selecting these atomic numbers when alternatives exist. */
+	excludeAtomicNumbers?: readonly number[]
 }
 
 const TYPE_LABELS_RU: Record<QuestionType, string> = {
@@ -55,19 +57,26 @@ function pickElementForType(
 	type: QuestionType,
 	pool: readonly ChemicalElement[],
 	rng: Rng,
+	excludeAtomicNumbers: readonly number[] = [],
 ): ChemicalElement {
-	if (type === 'NAME_TO_GROUP') {
-		const withGroup = pool.filter((el) => el.group !== null)
-		const source = withGroup.length > 0 ? withGroup : getElementsWithGroup()
-		if (source.length === 0) {
-			throw new Error('No elements with group available')
-		}
-		return pickOne(source, rng)
+	const excluded = new Set(excludeAtomicNumbers)
+	const basePool =
+		type === 'NAME_TO_GROUP'
+			? pool.filter((el) => el.group !== null)
+			: pool
+
+	const preferred = basePool.filter((el) => !excluded.has(el.atomicNumber))
+	const source =
+		preferred.length > 0
+			? preferred
+			: type === 'NAME_TO_GROUP' && basePool.length === 0
+				? getElementsWithGroup()
+				: basePool
+
+	if (source.length === 0) {
+		throw new Error('No elements available for question type')
 	}
-	if (pool.length === 0) {
-		throw new Error('Element pool is empty')
-	}
-	return pickOne(pool, rng)
+	return pickOne(source, rng)
 }
 
 function createQuestionId(
@@ -97,7 +106,12 @@ export function generateQuestion(options: GenerateQuestionOptions): QuizQuestion
 		rng,
 	)
 
-	const element = pickElementForType(type, pool, rng)
+	const element = pickElementForType(
+		type,
+		pool,
+		rng,
+		options.excludeAtomicNumbers,
+	)
 
 	switch (type) {
 		case 'NAME_TO_SYMBOL': {
@@ -215,8 +229,13 @@ export function generateQuestion(options: GenerateQuestionOptions): QuizQuestion
 	}
 }
 
+export interface GenerateQuestionSetOptions {
+	avoidConsecutiveElementRepeats?: boolean
+}
+
 /**
- * Generate a classic multi-question list with optional type cycling.
+ * Generate a classic multi-question list with balanced type cycling.
+ * Types are shuffled once so the session feels mixed without chaotic randomness.
  */
 export function generateQuestionSet(
 	count: number,
@@ -229,6 +248,7 @@ export function generateQuestionSet(
 		'NAME_TO_GROUP',
 		'ELEMENT_TO_CLASSIFICATION',
 	],
+	options: GenerateQuestionSetOptions = {},
 ): QuizQuestion[] {
 	if (count <= 0) {
 		return []
@@ -237,10 +257,24 @@ export function generateQuestionSet(
 		throw new Error('generateQuestionSet requires at least one question type')
 	}
 
+	const avoidRepeats = options.avoidConsecutiveElementRepeats ?? true
+	const typeOrder = shuffleInPlace([...types], rng)
 	const questions: QuizQuestion[] = []
+	let previousAtomicNumber: number | null = null
+
 	for (let i = 0; i < count; i += 1) {
-		const type = types[i % types.length]!
-		questions.push(generateQuestion({ rng, type }))
+		const type = typeOrder[i % typeOrder.length]!
+		const exclude =
+			avoidRepeats && previousAtomicNumber !== null
+				? [previousAtomicNumber]
+				: []
+		const question = generateQuestion({
+			rng,
+			type,
+			excludeAtomicNumbers: exclude,
+		})
+		questions.push(question)
+		previousAtomicNumber = question.elementAtomicNumber
 	}
 	return questions
 }

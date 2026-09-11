@@ -14,9 +14,13 @@ export const colors = {
 	accent: '#C45C26',
 	accentSoft: '#F2D6C4',
 	success: '#1F7A4D',
+	successSoft: '#D8F0E3',
 	danger: '#B42318',
+	dangerSoft: '#F8D7D4',
 	border: '#C9D7CF',
 	overlay: 'rgba(18, 36, 28, 0.45)',
+	progressTrack: '#D5E3DB',
+	progressFill: '#1F6B52',
 } as const
 
 export type ColorToken = keyof typeof colors

@@ -23,6 +23,14 @@ export const QUESTION_TYPES: readonly QuestionType[] = [
 
 export type AnswerValue = string
 
+/**
+ * Session UI/engine phase.
+ * - question: waiting for an answer
+ * - feedback: answer locked, showing result before auto-advance
+ * - complete: all questions answered
+ */
+export type SessionPhase = 'question' | 'feedback' | 'complete'
+
 export interface QuestionMetadata {
 	/** Human-readable Russian label for the question type. */
 	typeLabelRu: string
@@ -59,6 +67,8 @@ export interface SessionAnswerRecord {
 	selectedAnswer: AnswerValue
 	correctAnswer: AnswerValue
 	correct: boolean
+	/** Points awarded for this answer (0 when wrong). */
+	pointsEarned: number
 }
 
 export interface GameSession {
@@ -72,7 +82,10 @@ export interface GameSession {
 	currentStreak: number
 	bestStreak: number
 	score: number
+	phase: SessionPhase
 	isComplete: boolean
+	/** Points earned by the most recent answer (useful for +N UI). */
+	lastPointsEarned: number
 	/** Reserved extension slots for later economy / mastery features. */
 	extensions: {
 		atomsEarned: number
@@ -90,6 +103,7 @@ export interface SessionStats {
 	score: number
 	accuracy: number
 	isComplete: boolean
+	phase: SessionPhase
 }
 
 export type ClassificationChoice = ElementClassification

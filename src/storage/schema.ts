@@ -15,8 +15,13 @@ export interface AppSettings {
 export interface AppStatistics {
 	gamesPlayed: number
 	questionsAnswered: number
+	/** Lifetime correct answers across completed games. */
 	correctAnswers: number
+	/** Lifetime wrong answers across completed games. */
+	totalWrong: number
 	bestScore: number
+	/** Best session accuracy in range [0, 1]. */
+	bestAccuracy: number
 	bestStreak: number
 }
 
@@ -66,7 +71,9 @@ export const DEFAULT_STATISTICS: AppStatistics = {
 	gamesPlayed: 0,
 	questionsAnswered: 0,
 	correctAnswers: 0,
+	totalWrong: 0,
 	bestScore: 0,
+	bestAccuracy: 0,
 	bestStreak: 0,
 }
 

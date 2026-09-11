@@ -4,6 +4,7 @@
 export const ROUTES = {
 	Home: 'Home',
 	Game: 'Game',
+	Result: 'Result',
 	Modes: 'Modes',
 	Progress: 'Progress',
 	Learn: 'Learn',

@@ -1,25 +1,37 @@
 import type { ReactNode } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import {
+	SafeAreaView,
+	type Edge,
+} from 'react-native-safe-area-context'
 import { theme } from '../theme'
 
 interface ScreenProps {
-	title: string
+	title?: string
 	subtitle?: string
 	children?: ReactNode
+	/** Safe-area edges; bottom is included by default for CTA clearance. */
+	edges?: readonly Edge[]
 }
 
 /**
  * Shared screen shell with safe-area padding for top + bottom system insets.
  * Future CTAs should sit inside this shell, not flush to the gesture zone.
  */
-export function Screen({ title, subtitle, children }: ScreenProps) {
+export function Screen({
+	title,
+	subtitle,
+	children,
+	edges = ['top', 'right', 'left', 'bottom'],
+}: ScreenProps) {
 	return (
-		<SafeAreaView style={styles.safe} edges={['top', 'right', 'left', 'bottom']}>
+		<SafeAreaView style={styles.safe} edges={edges}>
 			<View style={styles.container}>
-				<Text style={styles.title}>{title}</Text>
+				{title ? <Text style={styles.title}>{title}</Text> : null}
 				{subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-				<View style={styles.body}>{children}</View>
+				<View style={[styles.body, !title && !subtitle ? styles.bodyFlush : null]}>
+					{children}
+				</View>
 			</View>
 		</SafeAreaView>
 	)
@@ -48,5 +60,8 @@ const styles = StyleSheet.create({
 	body: {
 		flex: 1,
 		marginTop: theme.spacing.lg,
+	},
+	bodyFlush: {
+		marginTop: 0,
 	},
 })

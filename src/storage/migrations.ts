@@ -31,6 +31,20 @@ function nonNegativeNumberOr(value: unknown, fallback: number): number {
 		: fallback
 }
 
+/** Clamp accuracy-like values into [0, 1], falling back when invalid. */
+function clampUnitInterval(value: unknown, fallback: number): number {
+	if (typeof value !== 'number' || !Number.isFinite(value)) {
+		return fallback
+	}
+	if (value < 0) {
+		return 0
+	}
+	if (value > 1) {
+		return 1
+	}
+	return value
+}
+
 function stringArrayOr(value: unknown, fallback: string[]): string[] {
 	return Array.isArray(value) && value.every((item) => typeof item === 'string')
 		? [...value]
@@ -85,11 +99,34 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 		},
 		statistics: {
 			...defaults.statistics,
-			gamesPlayed: nonNegativeNumberOr(statistics.gamesPlayed, defaults.statistics.gamesPlayed),
-			questionsAnswered: nonNegativeNumberOr(statistics.questionsAnswered, defaults.statistics.questionsAnswered),
-			correctAnswers: nonNegativeNumberOr(statistics.correctAnswers, defaults.statistics.correctAnswers),
-			bestScore: nonNegativeNumberOr(statistics.bestScore, defaults.statistics.bestScore),
-			bestStreak: nonNegativeNumberOr(statistics.bestStreak, defaults.statistics.bestStreak),
+			gamesPlayed: nonNegativeNumberOr(
+				statistics.gamesPlayed,
+				defaults.statistics.gamesPlayed,
+			),
+			questionsAnswered: nonNegativeNumberOr(
+				statistics.questionsAnswered,
+				defaults.statistics.questionsAnswered,
+			),
+			correctAnswers: nonNegativeNumberOr(
+				statistics.correctAnswers,
+				defaults.statistics.correctAnswers,
+			),
+			totalWrong: nonNegativeNumberOr(
+				statistics.totalWrong,
+				defaults.statistics.totalWrong,
+			),
+			bestScore: nonNegativeNumberOr(
+				statistics.bestScore,
+				defaults.statistics.bestScore,
+			),
+			bestAccuracy: clampUnitInterval(
+				statistics.bestAccuracy,
+				defaults.statistics.bestAccuracy,
+			),
+			bestStreak: nonNegativeNumberOr(
+				statistics.bestStreak,
+				defaults.statistics.bestStreak,
+			),
 		},
 		progress: {
 			...defaults.progress,

@@ -7,6 +7,7 @@ import { HomeScreen } from '../screens/HomeScreen'
 import { LearnScreen } from '../screens/LearnScreen'
 import { ModesScreen } from '../screens/ModesScreen'
 import { ProgressScreen } from '../screens/ProgressScreen'
+import { ResultScreen } from '../screens/ResultScreen'
 import { SettingsScreen } from '../screens/SettingsScreen'
 import { theme } from '../theme'
 import type { RootStackParamList } from './types'
@@ -39,7 +40,12 @@ export function RootNavigator() {
 				<Stack.Screen
 					name={ROUTES.Game}
 					component={GameScreen}
-					options={{ title: 'Игра' }}
+					options={{ title: 'Спринт', headerBackTitle: 'Назад' }}
+				/>
+				<Stack.Screen
+					name={ROUTES.Result}
+					component={ResultScreen}
+					options={{ title: 'Результат', headerShown: false }}
 				/>
 				<Stack.Screen
 					name={ROUTES.Modes}
