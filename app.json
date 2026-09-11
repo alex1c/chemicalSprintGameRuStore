@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Химический спринт",
+    "slug": "chemical-sprint",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "scheme": "chemical-sprint",
+    "android": {
+      "package": "com.calculatorplatform.chemicalsprint",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#0B3D2E",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.calculatorplatform.chemicalsprint"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-system-ui"
+    ]
+  }
+}
