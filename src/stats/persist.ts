@@ -9,6 +9,11 @@ import {
 	type AtomWalletState,
 } from '../economy'
 import {
+	DAILY_COMPLETION_BONUS,
+	applyDailyCompletion,
+	isDailyCompleted,
+} from '../daily'
+import {
 	applyElementOutcome,
 	applyModeSessionToStats,
 	type ElementOutcome,
@@ -42,6 +47,25 @@ export interface PersistCompletedSessionResult extends AppliedSessionStats {
 	modeId: GameModeId
 	isNewModeRecord: boolean
 	endReason: string | null
+	/** Daily challenge date key when mode is DAILY. */
+	dailyDateKey: string | null
+	/** First completion of that Daily date (bonus/streak eligible). */
+	isDailyFirstCompletion: boolean
+	dailyBonusGranted: number
+	dailyCurrentStreak: number
+	dailyStreakGrew: boolean
+	dailyNewStreakStarted: boolean
+	isDailyReplay: boolean
+}
+
+const EMPTY_DAILY_META = {
+	dailyDateKey: null as string | null,
+	isDailyFirstCompletion: false,
+	dailyBonusGranted: 0,
+	dailyCurrentStreak: 0,
+	dailyStreakGrew: false,
+	dailyNewStreakStarted: false,
+	isDailyReplay: false,
 }
 
 export function toEconomyWallet(atoms: AtomsWallet): AtomWalletState {
@@ -161,6 +185,13 @@ async function persistCompletedSessionStatsUnlocked(
 			modeId,
 			isNewModeRecord: false,
 			endReason: session.endReason,
+			...EMPTY_DAILY_META,
+			dailyDateKey: session.challengeDateKey,
+			dailyCurrentStreak: current.daily.currentStreak,
+			isDailyReplay:
+				modeId === 'DAILY' &&
+				session.challengeDateKey != null &&
+				isDailyCompleted(current.daily, session.challengeDateKey),
 		}
 	}
 
@@ -181,10 +212,21 @@ async function persistCompletedSessionStatsUnlocked(
 				modeId,
 				isNewModeRecord: false,
 				endReason: session.endReason,
+				...EMPTY_DAILY_META,
+				dailyDateKey: session.challengeDateKey,
+				dailyCurrentStreak: current.daily.currentStreak,
 			}
 		}
 
 		const isElementTraining = modeId === 'ELEMENT_TRAINING'
+		const isDaily = modeId === 'DAILY'
+		const dailyDateKey = session.challengeDateKey
+		const isDailyReplay =
+			isDaily &&
+			dailyDateKey != null &&
+			isDailyCompleted(current.daily, dailyDateKey)
+		const isDailyFirstCompletion =
+			isDaily && !isDailyReplay && dailyDateKey != null
 
 		const applied = isElementTraining
 			? {
@@ -230,13 +272,14 @@ async function persistCompletedSessionStatsUnlocked(
 					modeId,
 				)
 
-		const isNewBestScore = isElementTraining
-			? false
-			: modeId === 'CLASSIC'
-				? applied.isNewBestScore
-				: modeApplied.isNewRecord
+		const isNewBestScore =
+			isElementTraining || isDailyReplay
+				? false
+				: modeId === 'CLASSIC'
+					? applied.isNewBestScore
+					: modeApplied.isNewRecord
 
-		const breakdown = calculateAtomRewards({
+		let breakdown = calculateAtomRewards({
 			correctCount: summary.correctCount,
 			wrongCount: summary.wrongCount,
 			questionCount:
@@ -249,11 +292,64 @@ async function persistCompletedSessionStatsUnlocked(
 			sessionCompleted: true,
 		})
 
+		let dailyBonusGranted = 0
+		if (isDailyReplay) {
+			breakdown = {
+				baseCorrect: 0,
+				streakBonuses: 0,
+				completion: 0,
+				perfect: 0,
+				newRecord: 0,
+				total: 0,
+			}
+		} else if (isDailyFirstCompletion) {
+			dailyBonusGranted = DAILY_COMPLETION_BONUS
+			breakdown = {
+				...breakdown,
+				total: breakdown.total + dailyBonusGranted,
+			}
+		}
+
 		const earned = earnAtoms(
 			toEconomyWallet(current.atoms),
 			breakdown.total,
 			'session_reward',
 		)
+
+		const completedAt = new Date().toISOString()
+		let nextDaily = current.daily
+		let dailyMeta = {
+			...EMPTY_DAILY_META,
+			dailyDateKey,
+			isDailyFirstCompletion: Boolean(isDailyFirstCompletion),
+			dailyBonusGranted,
+			dailyCurrentStreak: current.daily.currentStreak,
+			isDailyReplay: Boolean(isDailyReplay),
+		}
+
+		if (isDaily && dailyDateKey) {
+			const dailyResult = applyDailyCompletion(current.daily, {
+				dateKey: dailyDateKey,
+				score: summary.score,
+				correct: summary.correctCount,
+				total: summary.questionCount,
+				bestStreak: summary.bestStreak,
+				accuracy: summary.accuracy,
+				atomsEarned: breakdown.total,
+				bonusGranted: Boolean(isDailyFirstCompletion),
+				completedAt,
+			})
+			nextDaily = dailyResult.state
+			dailyMeta = {
+				dailyDateKey,
+				isDailyFirstCompletion: dailyResult.isFirstCompletion,
+				dailyBonusGranted,
+				dailyCurrentStreak: dailyResult.currentStreak,
+				dailyStreakGrew: dailyResult.streakGrew,
+				dailyNewStreakStarted: dailyResult.newStreakStarted,
+				isDailyReplay: !dailyResult.isFirstCompletion,
+			}
+		}
 
 		const nextModeStats = isElementTraining
 			? current.modeStats
@@ -273,6 +369,7 @@ async function persistCompletedSessionStatsUnlocked(
 			atoms: toPersistedAtoms(earned.wallet),
 			elementStats: buildElementStatsUpdates(session, current.elementStats),
 			modeStats: nextModeStats,
+			daily: nextDaily,
 		}
 		await saveAppState(nextState, storage)
 
@@ -288,8 +385,12 @@ async function persistCompletedSessionStatsUnlocked(
 			atomBalance: earned.wallet.balance,
 			rewardBreakdown: breakdown,
 			modeId,
-			isNewModeRecord: isElementTraining ? false : modeApplied.isNewRecord,
+			isNewModeRecord:
+				isElementTraining || isDailyReplay
+					? false
+					: modeApplied.isNewRecord,
 			endReason: session.endReason,
+			...dailyMeta,
 		}
 	} catch {
 		const applied = applyCompletedSessionToStatistics(previous, summary)
@@ -317,6 +418,8 @@ async function persistCompletedSessionStatsUnlocked(
 			modeId,
 			isNewModeRecord: false,
 			endReason: session.endReason,
+			...EMPTY_DAILY_META,
+			dailyDateKey: session.challengeDateKey,
 		}
 	}
 }
@@ -386,5 +489,14 @@ export async function loadElementStats(storage?: KeyValueStorage) {
 		return state.elementStats
 	} catch {
 		return {}
+	}
+}
+
+export async function loadDailyState(storage?: KeyValueStorage) {
+	try {
+		const state = await loadAppState(storage)
+		return state.daily
+	} catch {
+		return createDefaultPersistedState().daily
 	}
 }

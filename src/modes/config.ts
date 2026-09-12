@@ -143,6 +143,27 @@ export const GAME_MODE_CONFIGS: Record<GameModeId, GameModeConfig> = {
 		recordField: 'bestScore',
 		poolSize: 5,
 	},
+	DAILY: {
+		id: 'DAILY',
+		titleRu: 'Спринт дня',
+		descriptionRu: '10 вопросов · ежедневный challenge',
+		icon: '🧪',
+		endCondition: 'fixed_count',
+		questionCount: 10,
+		durationMs: null,
+		allowedHints: ALL_HINTS,
+		feedbackTiming: { correctMs: 850, wrongMs: 1400 },
+		reward: {
+			correctCap: 10,
+			completionBonus: 3,
+			perfectBonus: 10,
+			streak5Bonus: 3,
+			streak10Bonus: 7,
+			recordBonus: 0,
+		},
+		recordField: 'bestScore',
+		poolSize: 10,
+	},
 }
 
 /** Modes shown on the Modes screen (excludes contextual ELEMENT_TRAINING). */

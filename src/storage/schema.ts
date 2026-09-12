@@ -5,12 +5,16 @@
 
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
 import {
+	createEmptyDailyState,
+	type DailyStateV4,
+} from '../daily'
+import {
 	createDefaultModeStatsMap,
 	type ElementStatsMap,
 	type ModeStatsMap,
 } from '../modes'
 
-export const STORAGE_SCHEMA_VERSION = 3 as const
+export const STORAGE_SCHEMA_VERSION = 4 as const
 
 export interface AppSettings {
 	soundEnabled: boolean
@@ -59,14 +63,10 @@ export interface AtomsWallet {
 	startingGranted: boolean
 }
 
+export type DailyState = DailyStateV4
+
 export interface AchievementsState {
 	unlockedIds: string[]
-}
-
-export interface DailyState {
-	lastDailyDate: string | null
-	dailySeed: number | null
-	dailyCompleted: boolean
 }
 
 /**
@@ -140,11 +140,7 @@ export const DEFAULT_ACHIEVEMENTS: AchievementsState = {
 	unlockedIds: [],
 }
 
-export const DEFAULT_DAILY: DailyState = {
-	lastDailyDate: null,
-	dailySeed: null,
-	dailyCompleted: false,
-}
+export const DEFAULT_DAILY: DailyState = createEmptyDailyState()
 
 export function createDefaultPersistedState(
 	now: () => Date = () => new Date(),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
 	Pressable,
 	ScrollView,
@@ -12,6 +12,13 @@ import { Screen } from '../components/Screen'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
 import {
+	DAILY_COMPLETION_BONUS,
+	createEmptyDailyState,
+	getLocalDateKey,
+	getTodayDailyState,
+	type DailyStateV4,
+} from '../daily'
+import {
 	GAME_MODE_ORDER,
 	getGameModeConfig,
 	getWeakModeAvailability,
@@ -19,25 +26,28 @@ import {
 	type ModeStatsMap,
 } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
-import { loadElementStats, loadModeStats } from '../stats'
+import { loadDailyState, loadElementStats, loadModeStats } from '../stats'
 import { theme } from '../theme'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Modes'>
 
 /**
- * Real Modes hub — start any PHASE 5 game mode.
+ * Modes hub — Daily featured card + regular play modes.
  */
 export function ModesScreen({ navigation }: Props) {
 	const [modeStats, setModeStats] = useState<ModeStatsMap | null>(null)
 	const [weakReady, setWeakReady] = useState(true)
+	const [daily, setDaily] = useState<DailyStateV4>(createEmptyDailyState())
 
 	const refresh = useCallback(async () => {
-		const [stats, elementStats] = await Promise.all([
+		const [stats, elementStats, dailyState] = await Promise.all([
 			loadModeStats(),
 			loadElementStats(),
+			loadDailyState(),
 		])
 		setModeStats(stats)
 		setWeakReady(getWeakModeAvailability(elementStats).available)
+		setDaily(dailyState)
 	}, [])
 
 	useFocusEffect(
@@ -50,7 +60,21 @@ export function ModesScreen({ navigation }: Props) {
 		void refresh()
 	}, [refresh])
 
+	const todayKey = getLocalDateKey()
+	const todayDaily = useMemo(
+		() => getTodayDailyState(daily, todayKey),
+		[daily, todayKey],
+	)
+
 	const startMode = (modeId: GameModeId) => {
+		if (modeId === 'DAILY') {
+			navigation.navigate(ROUTES.Game, {
+				modeId: 'DAILY',
+				dailyDateKey: todayKey,
+				sessionKey: Date.now(),
+			})
+			return
+		}
 		navigation.navigate(ROUTES.Game, {
 			modeId,
 			sessionKey: Date.now(),
@@ -63,6 +87,33 @@ export function ModesScreen({ navigation }: Props) {
 				contentContainerStyle={styles.list}
 				showsVerticalScrollIndicator={false}
 			>
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel={
+						todayDaily.completed
+							? `Спринт дня уже сыгран. Серия ${todayDaily.currentStreak} дней`
+							: `Спринт дня. Бонус плюс ${DAILY_COMPLETION_BONUS} атомов`
+					}
+					onPress={() => startMode('DAILY')}
+					style={({ pressed }) => [
+						styles.dailyCard,
+						pressed ? styles.cardPressed : null,
+					]}
+				>
+					<Text style={styles.icon}>🧪</Text>
+					<View style={styles.cardBody}>
+						<Text style={styles.cardTitle}>Спринт дня</Text>
+						<Text style={styles.cardDesc}>
+							{todayDaily.completed
+								? `Сегодня: ${todayDaily.entry?.bestCorrect ?? 0}/10 · 🔥 ${todayDaily.currentStreak}`
+								: `10 вопросов · бонус +${DAILY_COMPLETION_BONUS} ⚛`}
+						</Text>
+						<Text style={styles.cardRecord}>
+							{todayDaily.completed ? 'ПОВТОРИТЬ' : 'ИГРАТЬ'}
+						</Text>
+					</View>
+				</Pressable>
+
 				{GAME_MODE_ORDER.map((modeId) => {
 					const config = getGameModeConfig(modeId)
 					const stats = modeStats?.[modeId]
@@ -116,6 +167,17 @@ const styles = StyleSheet.create({
 	list: {
 		gap: theme.spacing.sm,
 		paddingBottom: theme.spacing.xl,
+	},
+	dailyCard: {
+		flexDirection: 'row',
+		gap: theme.spacing.md,
+		backgroundColor: theme.colors.accentSoft,
+		borderRadius: theme.radius.lg,
+		borderWidth: 1,
+		borderColor: theme.colors.accent,
+		padding: theme.spacing.md,
+		minHeight: MIN_TOUCH_TARGET + 24,
+		...theme.shadows.card,
 	},
 	card: {
 		flexDirection: 'row',

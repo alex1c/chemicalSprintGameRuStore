@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
 	Pressable,
 	StyleSheet,
@@ -13,8 +13,16 @@ import { Screen } from '../components/Screen'
 import { APP_DISPLAY_NAME } from '../constants/app'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
+import {
+	DAILY_COMPLETION_BONUS,
+	createEmptyDailyState,
+	getLocalDateKey,
+	getTodayDailyState,
+	type DailyStateV4,
+	type TodayDailyView,
+} from '../daily'
 import type { RootStackParamList } from '../navigation/types'
-import { loadAtomWallet, loadHomeStatistics } from '../stats'
+import { loadAtomWallet, loadDailyState, loadHomeStatistics } from '../stats'
 import { DEFAULT_STATISTICS, type AppStatistics } from '../storage'
 import { theme } from '../theme'
 
@@ -26,15 +34,18 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Home'>
 export function HomeScreen({ navigation }: Props) {
 	const [stats, setStats] = useState<AppStatistics>(DEFAULT_STATISTICS)
 	const [atomBalance, setAtomBalance] = useState(0)
+	const [daily, setDaily] = useState<DailyStateV4>(createEmptyDailyState())
 	const [ready, setReady] = useState(false)
 
 	const refresh = useCallback(async () => {
-		const [nextStats, wallet] = await Promise.all([
+		const [nextStats, wallet, dailyState] = await Promise.all([
 			loadHomeStatistics(),
 			loadAtomWallet(),
+			loadDailyState(),
 		])
 		setStats(nextStats)
 		setAtomBalance(wallet.balance)
+		setDaily(dailyState)
 		setReady(true)
 	}, [])
 
@@ -48,7 +59,21 @@ export function HomeScreen({ navigation }: Props) {
 		void refresh()
 	}, [refresh])
 
+	const todayKey = getLocalDateKey()
+	const todayDaily: TodayDailyView = useMemo(
+		() => getTodayDailyState(daily, todayKey),
+		[daily, todayKey],
+	)
+
 	const hasHistory = stats.gamesPlayed > 0
+
+	const startDaily = () => {
+		navigation.navigate(ROUTES.Game, {
+			modeId: 'DAILY',
+			dailyDateKey: todayKey,
+			sessionKey: Date.now(),
+		})
+	}
 
 	return (
 		<Screen>
@@ -84,6 +109,46 @@ export function HomeScreen({ navigation }: Props) {
 					Сыграйте первую партию — здесь появится ваш рекорд.
 				</Text>
 			) : null}
+
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel={
+					todayDaily.completed
+						? `Спринт дня уже сыгран. Сегодня ${todayDaily.entry?.bestCorrect ?? 0} из 10. Серия ${todayDaily.currentStreak} дней`
+						: `Спринт дня. 10 вопросов. Бонус плюс ${DAILY_COMPLETION_BONUS} атомов`
+				}
+				onPress={startDaily}
+				style={({ pressed }) => [
+					styles.dailyCard,
+					pressed ? styles.dailyCardPressed : null,
+				]}
+			>
+				<Text style={styles.dailyIcon}>🧪</Text>
+				<View style={styles.dailyBody}>
+					<Text style={styles.dailyTitle}>
+						Спринт дня{todayDaily.completed ? ' ✓' : ''}
+					</Text>
+					{todayDaily.completed ? (
+						<>
+							<Text style={styles.dailyMeta}>
+								Сегодня:{' '}
+								{todayDaily.entry?.bestCorrect ?? 0}/10
+							</Text>
+							<Text style={styles.dailyMeta}>
+								🔥 Серия: {todayDaily.currentStreak} дней
+							</Text>
+							<Text style={styles.dailyCta}>ПОВТОРИТЬ</Text>
+						</>
+					) : (
+						<>
+							<Text style={styles.dailyMeta}>
+								10 вопросов · бонус +{DAILY_COMPLETION_BONUS} ⚛
+							</Text>
+							<Text style={styles.dailyCta}>ИГРАТЬ</Text>
+						</>
+					)}
+				</View>
+			</Pressable>
 
 			<View style={styles.primaryWrap}>
 				<PrimaryButton
@@ -202,8 +267,44 @@ const styles = StyleSheet.create({
 		textAlign: 'center',
 		marginBottom: theme.spacing.md,
 	},
+	dailyCard: {
+		flexDirection: 'row',
+		gap: theme.spacing.md,
+		backgroundColor: theme.colors.accentSoft,
+		borderRadius: theme.radius.lg,
+		borderWidth: 1,
+		borderColor: theme.colors.accent,
+		padding: theme.spacing.md,
+		marginBottom: theme.spacing.md,
+		minHeight: MIN_TOUCH_TARGET + 16,
+		alignItems: 'center',
+	},
+	dailyCardPressed: {
+		opacity: 0.9,
+	},
+	dailyIcon: {
+		fontSize: 28,
+	},
+	dailyBody: {
+		flex: 1,
+		gap: 2,
+	},
+	dailyTitle: {
+		...theme.typography.subtitle,
+		color: theme.colors.textPrimary,
+	},
+	dailyMeta: {
+		...theme.typography.body,
+		color: theme.colors.textSecondary,
+	},
+	dailyCta: {
+		...theme.typography.caption,
+		color: theme.colors.accent,
+		fontWeight: '700',
+		marginTop: theme.spacing.xxs,
+	},
 	primaryWrap: {
-		marginTop: theme.spacing.md,
+		marginTop: theme.spacing.xs,
 	},
 	secondary: {
 		marginTop: theme.spacing.xl,

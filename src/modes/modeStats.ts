@@ -29,6 +29,7 @@ export function createDefaultModeStatsMap(): ModeStatsMap {
 		MIXED: createEmptyModeStats(),
 		WEAK_ELEMENTS: createEmptyModeStats(),
 		ELEMENT_TRAINING: createEmptyModeStats(),
+		DAILY: createEmptyModeStats(),
 	}
 }
 

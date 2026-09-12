@@ -138,6 +138,11 @@ export interface GameSession {
 	deadlineAt: number | null
 	/** Why the session ended (set on complete). */
 	endReason: import('../modes/types').SessionEndReason
+	/**
+	 * Local calendar date key the Daily challenge was started for (YYYY-MM-DD).
+	 * Null for non-daily sessions.
+	 */
+	challengeDateKey: string | null
 	extensions: SessionEconomyExtensions
 }
 

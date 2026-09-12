@@ -10,6 +10,7 @@ export type GameModeId =
 	| 'MIXED'
 	| 'WEAK_ELEMENTS'
 	| 'ELEMENT_TRAINING'
+	| 'DAILY'
 
 export type SessionEndCondition = 'fixed_count' | 'timed' | 'until_mistake'
 

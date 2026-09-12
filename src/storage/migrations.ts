@@ -1,4 +1,5 @@
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
+import { sanitizeDailyState } from '../daily'
 import {
 	createDefaultModeStatsMap,
 	type ElementPerformance,
@@ -92,6 +93,20 @@ export const MIGRATIONS: Record<number, Migration> = {
 			],
 		},
 	}),
+	/**
+	 * v4: Daily Sprint streak + per-date history.
+	 * Resets legacy placeholder daily flags without inventing completions.
+	 */
+	4: (raw) => ({
+		...raw,
+		schemaVersion: 4,
+		daily: {
+			currentStreak: 0,
+			bestStreak: 0,
+			lastCompletedDateKey: null,
+			history: {},
+		},
+	}),
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -180,7 +195,6 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 	const progress = isRecord(doc.progress) ? doc.progress : {}
 	const atoms = isRecord(doc.atoms) ? doc.atoms : {}
 	const achievements = isRecord(doc.achievements) ? doc.achievements : {}
-	const daily = isRecord(doc.daily) ? doc.daily : {}
 	const completedSessionIds = stringArrayOr(doc.completedSessionIds, [])
 
 	const sanitizedAtomsBalance = nonNegativeNumberOr(
@@ -295,23 +309,7 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 				defaults.achievements.unlockedIds,
 			),
 		},
-		daily: {
-			...defaults.daily,
-			lastDailyDate:
-				typeof daily.lastDailyDate === 'string' ||
-				daily.lastDailyDate === null
-					? daily.lastDailyDate
-					: defaults.daily.lastDailyDate,
-			dailySeed:
-				typeof daily.dailySeed === 'number' &&
-				Number.isFinite(daily.dailySeed)
-					? daily.dailySeed
-					: defaults.daily.dailySeed,
-			dailyCompleted: booleanOr(
-				daily.dailyCompleted,
-				defaults.daily.dailyCompleted,
-			),
-		},
+		daily: sanitizeDailyState(doc.daily),
 		elementStats: sanitizeElementStats(doc.elementStats),
 		modeStats: sanitizeModeStats(doc.modeStats),
 		completedSessionIds,
@@ -360,6 +358,7 @@ function sanitizeModeStats(value: unknown): ModeStatsMap {
 		'MIXED',
 		'WEAK_ELEMENTS',
 		'ELEMENT_TRAINING',
+		'DAILY',
 	]
 	const result = { ...defaults }
 	for (const modeId of modeIds) {

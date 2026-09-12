@@ -286,8 +286,8 @@ describe('mode-aware atom rewards', () => {
 	})
 })
 
-describe('schema v3 migration', () => {
-	it('migrates v2 state to v3 with empty element/mode stats', () => {
+describe('schema migration to v4', () => {
+	it('migrates v2 state through to v4 with empty daily', () => {
 		const migrated = migratePersistedState({
 			schemaVersion: 2,
 			atoms: {
@@ -304,6 +304,8 @@ describe('schema v3 migration', () => {
 		expect(migrated.elementStats).toEqual({})
 		expect(migrated.modeStats.CLASSIC.gamesPlayed).toBe(0)
 		expect(migrated.progress.unlockedModes).toContain('TIMED_60')
+		expect(migrated.daily.currentStreak).toBe(0)
+		expect(migrated.daily.history).toEqual({})
 	})
 
 	it('sanitizes corrupt element stats', () => {
@@ -319,12 +321,14 @@ describe('schema v3 migration', () => {
 		expect(state.elementStats['11']!.wrong).toBe(2)
 		expect(state.elementStats.bad).toBeUndefined()
 		expect(state.elementStats['999']).toBeUndefined()
+		expect(state.schemaVersion).toBe(4)
 	})
 
-	it('fresh defaults are schema v3', () => {
+	it('fresh defaults are schema v4', () => {
 		const fresh = createDefaultPersistedState()
-		expect(fresh.schemaVersion).toBe(3)
+		expect(fresh.schemaVersion).toBe(4)
 		expect(fresh.modeStats.MIXED.bestScore).toBe(0)
+		expect(fresh.daily.currentStreak).toBe(0)
 	})
 })
 

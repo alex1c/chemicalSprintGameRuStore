@@ -29,12 +29,14 @@ export function GameScreen({ navigation, route }: Props) {
 	const sessionKey = route.params?.sessionKey ?? 0
 	const modeId = route.params?.modeId ?? 'CLASSIC'
 	const focusAtomicNumber = route.params?.focusAtomicNumber
+	const dailyDateKey = route.params?.dailyDateKey
 	return (
 		<ModeGamePlay
-			key={`${modeId}-${focusAtomicNumber ?? 'any'}-${sessionKey}`}
+			key={`${modeId}-${focusAtomicNumber ?? 'any'}-${dailyDateKey ?? 'nodate'}-${sessionKey}`}
 			navigation={navigation}
 			modeId={modeId}
 			focusAtomicNumber={focusAtomicNumber}
+			dailyDateKey={dailyDateKey}
 		/>
 	)
 }
@@ -43,10 +45,12 @@ function ModeGamePlay({
 	navigation,
 	modeId,
 	focusAtomicNumber,
+	dailyDateKey,
 }: {
 	navigation: Props['navigation']
 	modeId: GameModeId
 	focusAtomicNumber?: number
+	dailyDateKey?: string
 }) {
 	const mode = getGameModeConfig(modeId)
 
@@ -69,9 +73,16 @@ function ModeGamePlay({
 				rewardBreakdown: result.rewardBreakdown,
 				endReason: result.endReason,
 				focusAtomicNumber,
+				dailyDateKey: result.dailyDateKey ?? dailyDateKey,
+				isDailyFirstCompletion: result.isDailyFirstCompletion,
+				dailyBonusGranted: result.dailyBonusGranted,
+				dailyCurrentStreak: result.dailyCurrentStreak,
+				dailyStreakGrew: result.dailyStreakGrew,
+				dailyNewStreakStarted: result.dailyNewStreakStarted,
+				isDailyReplay: result.isDailyReplay,
 			})
 		},
-		[navigation, focusAtomicNumber],
+		[navigation, focusAtomicNumber, dailyDateKey],
 	)
 
 	const {
@@ -94,7 +105,7 @@ function ModeGamePlay({
 		useSaveStreak,
 		canAffordHint,
 		isHintAvailable,
-	} = useGameSession(modeId, handleComplete, focusAtomicNumber)
+	} = useGameSession(modeId, handleComplete, focusAtomicNumber, dailyDateKey)
 
 	if (weakUnavailable) {
 		return (

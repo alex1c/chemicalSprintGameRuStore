@@ -16,7 +16,11 @@ function resultHeadline(
 	correctCount: number,
 	total: number,
 	focusAtomicNumber?: number,
+	isDailyReplay?: boolean,
 ): string {
+	if (modeId === 'DAILY') {
+		return isDailyReplay ? 'Сегодняшний результат' : 'Спринт дня завершён'
+	}
 	if (modeId === 'ELEMENT_TRAINING') {
 		const element = focusAtomicNumber
 			? getElementByAtomicNumber(focusAtomicNumber)
@@ -47,7 +51,7 @@ function resultHeadline(
 }
 
 /**
- * Mode-aware post-session summary. Restart keeps the same mode / element.
+ * Mode-aware post-session summary. Restart keeps the same mode / element / daily.
  */
 export function ResultScreen({ navigation, route }: Props) {
 	const {
@@ -65,10 +69,18 @@ export function ResultScreen({ navigation, route }: Props) {
 		atomBalance,
 		rewardBreakdown,
 		focusAtomicNumber,
+		dailyDateKey,
+		isDailyFirstCompletion,
+		dailyBonusGranted = 0,
+		dailyCurrentStreak = 0,
+		dailyStreakGrew,
+		dailyNewStreakStarted,
+		isDailyReplay,
 	} = route.params
 
 	const mode = getGameModeConfig(modeId)
 	const isElementTraining = modeId === 'ELEMENT_TRAINING'
+	const isDaily = modeId === 'DAILY'
 	const answered = correctCount + wrongCount
 	const accuracyPct = Math.round(accuracy * 100)
 	const headline = resultHeadline(
@@ -77,6 +89,7 @@ export function ResultScreen({ navigation, route }: Props) {
 		correctCount,
 		mode.endCondition === 'fixed_count' ? questionCount : answered,
 		focusAtomicNumber,
+		isDailyReplay,
 	)
 	const isPerfect =
 		mode.endCondition === 'fixed_count' &&
@@ -89,7 +102,7 @@ export function ResultScreen({ navigation, route }: Props) {
 				<Text style={styles.emoji}>{mode.icon}</Text>
 				<Text style={styles.modeTitle}>{mode.titleRu}</Text>
 				<Text style={styles.headline}>{headline}</Text>
-				{isPerfect && !isElementTraining ? (
+				{isPerfect && !isElementTraining && !isDailyReplay ? (
 					<Text style={styles.perfect}>Идеальный спринт!</Text>
 				) : null}
 
@@ -115,6 +128,31 @@ export function ResultScreen({ navigation, route }: Props) {
 					</>
 				) : null}
 
+				{isDaily ? (
+					<Text style={styles.dailyStreak}>
+						🔥 Серия: {dailyCurrentStreak}{' '}
+						{dailyCurrentStreak === 1 ? 'день' : 'дней'}
+					</Text>
+				) : null}
+				{isDaily && dailyStreakGrew ? (
+					<Text style={styles.streakNote}>Серия продолжается!</Text>
+				) : null}
+				{isDaily && dailyNewStreakStarted && isDailyFirstCompletion ? (
+					<Text style={styles.streakNote}>
+						Новая серия: 1 день
+					</Text>
+				) : null}
+				{isDaily && dailyBonusGranted > 0 ? (
+					<Text style={styles.streakNote}>
+						Бонус дня +{dailyBonusGranted} ⚛
+					</Text>
+				) : null}
+				{isDaily && isDailyReplay ? (
+					<Text style={styles.replayNote}>
+						Повтор без начисления атомов
+					</Text>
+				) : null}
+
 				<View style={styles.atomsBlock}>
 					<Text style={styles.atomsEarned}>⚛ +{atomsEarned}</Text>
 					<Text style={styles.atomsBalance}>
@@ -125,7 +163,7 @@ export function ResultScreen({ navigation, route }: Props) {
 					</Text>
 				</View>
 
-				{!isElementTraining ? (
+				{!isElementTraining && !isDailyReplay ? (
 					<>
 						<View style={styles.badges}>
 							{rewardBreakdown.streakBonuses > 0 ? (
@@ -143,17 +181,17 @@ export function ResultScreen({ navigation, route }: Props) {
 							) : null}
 						</View>
 
-						{isNewBestScore || isNewModeRecord ? (
+						{!isDaily && (isNewBestScore || isNewModeRecord) ? (
 							<View style={styles.recordBanner}>
 								<Text style={styles.recordText}>
 									Новый рекорд режима!
 								</Text>
 							</View>
-						) : (
+						) : !isDaily ? (
 							<Text style={styles.recordMuted}>
 								Рекорд: {Math.max(previousBestScore, score)}
 							</Text>
-						)}
+						) : null}
 					</>
 				) : null}
 			</View>
@@ -177,6 +215,26 @@ export function ResultScreen({ navigation, route }: Props) {
 							variant="secondary"
 							accessibilityLabel="Вернуться к прогрессу"
 							onPress={() => navigation.navigate(ROUTES.Progress)}
+						/>
+					</>
+				) : isDaily ? (
+					<>
+						<PrimaryButton
+							label="ПОВТОРИТЬ"
+							accessibilityLabel="Повторить спринт дня"
+							onPress={() =>
+								navigation.replace(ROUTES.Game, {
+									modeId: 'DAILY',
+									dailyDateKey: dailyDateKey,
+									sessionKey: Date.now(),
+								})
+							}
+						/>
+						<PrimaryButton
+							label="НА ГЛАВНУЮ"
+							variant="secondary"
+							accessibilityLabel="Вернуться на главную"
+							onPress={() => navigation.navigate(ROUTES.Home)}
 						/>
 					</>
 				) : (
@@ -248,6 +306,21 @@ const styles = StyleSheet.create({
 		...theme.typography.body,
 		color: theme.colors.textSecondary,
 		marginBottom: theme.spacing.xs,
+	},
+	dailyStreak: {
+		...theme.typography.subtitle,
+		color: theme.colors.accent,
+		marginTop: theme.spacing.sm,
+	},
+	streakNote: {
+		...theme.typography.body,
+		color: theme.colors.brandSoft,
+		marginTop: theme.spacing.xxs,
+	},
+	replayNote: {
+		...theme.typography.caption,
+		color: theme.colors.textSecondary,
+		marginTop: theme.spacing.xs,
 	},
 	atomsBlock: {
 		marginTop: theme.spacing.lg,

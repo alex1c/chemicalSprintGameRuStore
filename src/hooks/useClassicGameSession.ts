@@ -147,6 +147,7 @@ export function useGameSession(
 	modeId: GameModeId,
 	onSessionComplete?: (result: PersistCompletedSessionResult) => void,
 	focusAtomicNumber?: number,
+	dailyDateKey?: string,
 ): UseGameSessionResult {
 	const mode = getGameModeConfig(modeId)
 	const [session, setSession] = useState<GameSession | null>(null)
@@ -195,6 +196,7 @@ export function useGameSession(
 		const created = createModeSession(modeId, {
 			elementStats,
 			focusAtomicNumber,
+			dailyDateKey,
 		})
 		if (!created) {
 			setWeakUnavailable(true)
@@ -203,7 +205,7 @@ export function useGameSession(
 		}
 		setWeakUnavailable(false)
 		setSession(created)
-	}, [modeId, focusAtomicNumber])
+	}, [modeId, focusAtomicNumber, dailyDateKey])
 
 	useEffect(() => {
 		mountedRef.current = true

@@ -4,6 +4,11 @@ import {
 	type ChemicalElement,
 } from '../data/chemistry'
 import {
+	createDailyChallenge,
+	getLocalDateKey,
+	isValidDateKey,
+} from '../daily'
+import {
 	ELEMENT_TRAINING_QUESTION_COUNT,
 } from '../mastery'
 import {
@@ -20,6 +25,8 @@ export interface CreateModeSessionOptions
 	elementStats?: ElementStatsMap
 	/** Required for ELEMENT_TRAINING. */
 	focusAtomicNumber?: number
+	/** Daily challenge date key; defaults to today when omitted for DAILY. */
+	dailyDateKey?: string
 }
 
 export type { WeakModeAvailability } from '../modes'
@@ -44,6 +51,26 @@ export function createModeSession(
 ): GameSession | null {
 	const mode = getGameModeConfig(modeId)
 
+	if (modeId === 'DAILY') {
+		const dateKey = options.dailyDateKey ?? getLocalDateKey()
+		if (!isValidDateKey(dateKey)) {
+			return null
+		}
+		const challenge = createDailyChallenge(dateKey)
+		return createGameSession({
+			...options,
+			modeId,
+			seed: challenge.seed,
+			questions: challenge.questions,
+			questionCount: challenge.questions.length,
+			challengeDateKey: dateKey,
+			// Unique per attempt so replay completions are not blocked by session-id idempotency.
+			sessionId:
+				options.sessionId ??
+				`session-DAILY-${dateKey}-${Date.now()}`,
+		})
+	}
+
 	if (modeId === 'ELEMENT_TRAINING') {
 		const atomic = options.focusAtomicNumber
 		if (typeof atomic !== 'number') {
@@ -62,6 +89,7 @@ export function createModeSession(
 				mode.questionCount ??
 				ELEMENT_TRAINING_QUESTION_COUNT,
 			avoidConsecutiveElementRepeats: false,
+			challengeDateKey: null,
 		})
 	}
 
@@ -77,6 +105,7 @@ export function createModeSession(
 			questionCount: mode.questionCount ?? 10,
 			elements: weakElements,
 			avoidConsecutiveElementRepeats: true,
+			challengeDateKey: null,
 		})
 	}
 
@@ -86,6 +115,7 @@ export function createModeSession(
 		questionCount:
 			options.questionCount ?? mode.questionCount ?? mode.poolSize,
 		avoidConsecutiveElementRepeats: true,
+		challengeDateKey: null,
 	})
 }
 

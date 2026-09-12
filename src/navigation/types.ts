@@ -24,6 +24,14 @@ export type ResultScreenParams = {
 	endReason: string | null
 	/** Present for contextual single-element training. */
 	focusAtomicNumber?: number
+	/** Daily challenge date key bound at session start. */
+	dailyDateKey?: string
+	isDailyFirstCompletion?: boolean
+	dailyBonusGranted?: number
+	dailyCurrentStreak?: number
+	dailyStreakGrew?: boolean
+	dailyNewStreakStarted?: boolean
+	isDailyReplay?: boolean
 }
 
 export type RootStackParamList = {
@@ -33,6 +41,7 @@ export type RootStackParamList = {
 				sessionKey?: number
 				modeId?: GameModeId
 				focusAtomicNumber?: number
+				dailyDateKey?: string
 		  }
 		| undefined
 	[ROUTES.Result]: ResultScreenParams

@@ -47,6 +47,8 @@ export interface CreateSessionOptions {
 	focusAtomicNumber?: number
 	/** Optional prebuilt question list (tests / specialized factories). */
 	questions?: QuizQuestion[]
+	/** Daily challenge date key bound at session start. */
+	challengeDateKey?: string | null
 }
 
 
@@ -136,6 +138,7 @@ export function createGameSession(
 		lastPointsEarned: 0,
 		deadlineAt,
 		endReason: questions.length === 0 ? 'insufficient_pool' : null,
+		challengeDateKey: options.challengeDateKey ?? null,
 		extensions: createInitialEconomyExtensions(),
 	}
 }

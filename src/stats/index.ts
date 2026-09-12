@@ -16,6 +16,7 @@ export {
 	loadAtomWallet,
 	loadModeStats,
 	loadElementStats,
+	loadDailyState,
 	toEconomyWallet,
 	toPersistedAtoms,
 	buildElementStatsUpdates,
