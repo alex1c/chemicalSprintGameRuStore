@@ -184,20 +184,55 @@ async function persistCompletedSessionStatsUnlocked(
 			}
 		}
 
-		const applied = applyCompletedSessionToStatistics(previous, summary)
-		const modeApplied = applyModeSessionToStats(
-			current.modeStats[modeId],
-			{
-				score: summary.score,
-				correctCount: summary.correctCount,
-				bestStreak: summary.bestStreak,
-				accuracy: summary.accuracy,
-			},
-			modeId,
-		)
+		const isElementTraining = modeId === 'ELEMENT_TRAINING'
 
-		const isNewBestScore =
-			modeId === 'CLASSIC'
+		const applied = isElementTraining
+			? {
+					previousBestScore: previous.bestScore,
+					isNewBestScore: false,
+					statistics: {
+						...previous,
+						gamesPlayed: previous.gamesPlayed + 1,
+						questionsAnswered:
+							previous.questionsAnswered + summary.questionCount,
+						correctAnswers:
+							previous.correctAnswers + summary.correctCount,
+						totalWrong: previous.totalWrong + summary.wrongCount,
+						bestStreak: Math.max(
+							previous.bestStreak,
+							summary.bestStreak,
+						),
+						hintsUsed: { ...previous.hintsUsed },
+					},
+				}
+			: applyCompletedSessionToStatistics(previous, summary)
+
+		const modeApplied = isElementTraining
+			? {
+					stats: current.modeStats[modeId] ?? {
+						gamesPlayed: 0,
+						bestScore: 0,
+						bestCorrect: 0,
+						bestStreak: 0,
+						bestAccuracy: 0,
+					},
+					isNewRecord: false,
+					previousRecord: 0,
+				}
+			: applyModeSessionToStats(
+					current.modeStats[modeId],
+					{
+						score: summary.score,
+						correctCount: summary.correctCount,
+						bestStreak: summary.bestStreak,
+						accuracy: summary.accuracy,
+					},
+					modeId,
+				)
+
+		const isNewBestScore = isElementTraining
+			? false
+			: modeId === 'CLASSIC'
 				? applied.isNewBestScore
 				: modeApplied.isNewRecord
 
@@ -220,6 +255,13 @@ async function persistCompletedSessionStatsUnlocked(
 			'session_reward',
 		)
 
+		const nextModeStats = isElementTraining
+			? current.modeStats
+			: {
+					...current.modeStats,
+					[modeId]: modeApplied.stats,
+				}
+
 		const nextState: PersistedAppState = {
 			...current,
 			completedSessionIds: [...current.completedSessionIds, session.id],
@@ -230,16 +272,15 @@ async function persistCompletedSessionStatsUnlocked(
 			},
 			atoms: toPersistedAtoms(earned.wallet),
 			elementStats: buildElementStatsUpdates(session, current.elementStats),
-			modeStats: {
-				...current.modeStats,
-				[modeId]: modeApplied.stats,
-			},
+			modeStats: nextModeStats,
 		}
 		await saveAppState(nextState, storage)
 
 		return {
 			...applied,
-			previousBestScore: modeApplied.previousRecord,
+			previousBestScore: isElementTraining
+				? previous.bestScore
+				: modeApplied.previousRecord,
 			isNewBestScore,
 			summary,
 			persisted: true,
@@ -247,7 +288,7 @@ async function persistCompletedSessionStatsUnlocked(
 			atomBalance: earned.wallet.balance,
 			rewardBreakdown: breakdown,
 			modeId,
-			isNewModeRecord: modeApplied.isNewRecord,
+			isNewModeRecord: isElementTraining ? false : modeApplied.isNewRecord,
 			endReason: session.endReason,
 		}
 	} catch {

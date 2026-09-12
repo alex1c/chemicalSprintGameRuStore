@@ -1,4 +1,11 @@
-import { ELEMENTS, type ChemicalElement } from '../data/chemistry'
+import {
+	ELEMENTS,
+	getElementByAtomicNumber,
+	type ChemicalElement,
+} from '../data/chemistry'
+import {
+	ELEMENT_TRAINING_QUESTION_COUNT,
+} from '../mastery'
 import {
 	getGameModeConfig,
 	getWeakModeAvailability,
@@ -11,6 +18,8 @@ import type { GameSession } from './types'
 export interface CreateModeSessionOptions
 	extends Omit<CreateSessionOptions, 'modeId' | 'elements'> {
 	elementStats?: ElementStatsMap
+	/** Required for ELEMENT_TRAINING. */
+	focusAtomicNumber?: number
 }
 
 export type { WeakModeAvailability } from '../modes'
@@ -25,14 +34,36 @@ function elementsFromAtomicNumbers(
 }
 
 /**
- * Create a session for any PHASE 5 mode.
- * Returns null for Weak Elements when the weak pool is insufficient.
+ * Create a session for any playable / contextual mode.
+ * Returns null for Weak Elements when the weak pool is insufficient,
+ * or for ELEMENT_TRAINING when focusAtomicNumber is missing/invalid.
  */
 export function createModeSession(
 	modeId: GameModeId,
 	options: CreateModeSessionOptions = {},
 ): GameSession | null {
 	const mode = getGameModeConfig(modeId)
+
+	if (modeId === 'ELEMENT_TRAINING') {
+		const atomic = options.focusAtomicNumber
+		if (typeof atomic !== 'number') {
+			return null
+		}
+		const element = getElementByAtomicNumber(atomic)
+		if (!element) {
+			return null
+		}
+		return createGameSession({
+			...options,
+			modeId,
+			focusAtomicNumber: atomic,
+			questionCount:
+				options.questionCount ??
+				mode.questionCount ??
+				ELEMENT_TRAINING_QUESTION_COUNT,
+			avoidConsecutiveElementRepeats: false,
+		})
+	}
 
 	if (modeId === 'WEAK_ELEMENTS') {
 		const availability = getWeakModeAvailability(options.elementStats ?? {})

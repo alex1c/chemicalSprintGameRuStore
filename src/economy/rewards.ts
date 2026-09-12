@@ -1,3 +1,4 @@
+import { ELEMENT_TRAINING_MAX_ATOMS } from '../mastery'
 import { getGameModeConfig, type GameModeId } from '../modes'
 import { ATOM_ECONOMY_CONFIG } from './config'
 
@@ -36,6 +37,9 @@ export function calculateAtomRewards(
 	const mode = getGameModeConfig(modeId)
 	const reward = mode.reward
 
+	// Contextual training never grants record bonuses.
+	const allowRecord = modeId !== 'ELEMENT_TRAINING' && input.isNewBestScore
+
 	const uncappedCorrect =
 		Math.max(0, input.correctCount) * legacyConfig.correctAnswer
 	const baseCorrect = Math.min(uncappedCorrect, reward.correctCap)
@@ -64,9 +68,14 @@ export function calculateAtomRewards(
 			? reward.perfectBonus
 			: 0
 
-	const newRecord = input.isNewBestScore ? reward.recordBonus : 0
+	const newRecord = allowRecord ? reward.recordBonus : 0
 
-	const total = baseCorrect + streakBonuses + completion + perfect + newRecord
+	let total = baseCorrect + streakBonuses + completion + perfect + newRecord
+
+	// Hard ceiling for single-element training to prevent farm exploits.
+	if (modeId === 'ELEMENT_TRAINING') {
+		total = Math.min(total, ELEMENT_TRAINING_MAX_ATOMS)
+	}
 
 	return {
 		baseCorrect,

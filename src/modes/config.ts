@@ -118,8 +118,34 @@ export const GAME_MODE_CONFIGS: Record<GameModeId, GameModeConfig> = {
 		recordField: 'bestScore',
 		poolSize: 10,
 	},
+	/**
+	 * Contextual 5Q training for one element from Progress detail.
+	 * Intentionally omitted from GAME_MODE_ORDER (not a Modes hub card).
+	 */
+	ELEMENT_TRAINING: {
+		id: 'ELEMENT_TRAINING',
+		titleRu: 'Тренировка элемента',
+		descriptionRu: '5 вопросов по одному элементу',
+		icon: '🔬',
+		endCondition: 'fixed_count',
+		questionCount: 5,
+		durationMs: null,
+		allowedHints: ALL_HINTS,
+		feedbackTiming: { correctMs: 750, wrongMs: 1200 },
+		reward: {
+			correctCap: 3,
+			completionBonus: 1,
+			perfectBonus: 0,
+			streak5Bonus: 0,
+			streak10Bonus: 0,
+			recordBonus: 0,
+		},
+		recordField: 'bestScore',
+		poolSize: 5,
+	},
 }
 
+/** Modes shown on the Modes screen (excludes contextual ELEMENT_TRAINING). */
 export const GAME_MODE_ORDER: readonly GameModeId[] = [
 	'CLASSIC',
 	'TIMED_60',

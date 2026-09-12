@@ -146,6 +146,7 @@ const HINT_SPEND_REASON: Record<
 export function useGameSession(
 	modeId: GameModeId,
 	onSessionComplete?: (result: PersistCompletedSessionResult) => void,
+	focusAtomicNumber?: number,
 ): UseGameSessionResult {
 	const mode = getGameModeConfig(modeId)
 	const [session, setSession] = useState<GameSession | null>(null)
@@ -191,7 +192,10 @@ export function useGameSession(
 		setCompletionResult(null)
 
 		const elementStats = await loadElementStats()
-		const created = createModeSession(modeId, { elementStats })
+		const created = createModeSession(modeId, {
+			elementStats,
+			focusAtomicNumber,
+		})
 		if (!created) {
 			setWeakUnavailable(true)
 			setSession(null)
@@ -199,7 +203,7 @@ export function useGameSession(
 		}
 		setWeakUnavailable(false)
 		setSession(created)
-	}, [modeId])
+	}, [modeId, focusAtomicNumber])
 
 	useEffect(() => {
 		mountedRef.current = true

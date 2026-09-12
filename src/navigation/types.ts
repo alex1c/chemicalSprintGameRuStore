@@ -22,14 +22,23 @@ export type ResultScreenParams = {
 	atomBalance: number
 	rewardBreakdown: AtomRewardBreakdown
 	endReason: string | null
+	/** Present for contextual single-element training. */
+	focusAtomicNumber?: number
 }
 
 export type RootStackParamList = {
 	[ROUTES.Home]: undefined
-	[ROUTES.Game]: { sessionKey?: number; modeId?: GameModeId } | undefined
+	[ROUTES.Game]:
+		| {
+				sessionKey?: number
+				modeId?: GameModeId
+				focusAtomicNumber?: number
+		  }
+		| undefined
 	[ROUTES.Result]: ResultScreenParams
 	[ROUTES.Modes]: undefined
 	[ROUTES.Progress]: undefined
+	[ROUTES.ElementDetail]: { atomicNumber: number }
 	[ROUTES.Learn]: undefined
 	[ROUTES.Achievements]: undefined
 	[ROUTES.Settings]: undefined

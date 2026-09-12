@@ -21,7 +21,10 @@ export interface GenerateQuestionOptions {
 	elements?: readonly ChemicalElement[]
 	/** Prefer not selecting these atomic numbers when alternatives exist. */
 	excludeAtomicNumbers?: readonly number[]
+	/** Lock the target element (single-element training). */
+	forceElement?: ChemicalElement
 }
+
 
 const TYPE_LABELS_RU: Record<QuestionType, string> = {
 	NAME_TO_SYMBOL: 'Название → символ',
@@ -106,12 +109,18 @@ export function generateQuestion(options: GenerateQuestionOptions): QuizQuestion
 		rng,
 	)
 
-	const element = pickElementForType(
-		type,
-		pool,
-		rng,
-		options.excludeAtomicNumbers,
-	)
+	if (options.forceElement && type === 'NAME_TO_GROUP' && options.forceElement.group === null) {
+		throw new Error('NAME_TO_GROUP is invalid for elements without a group')
+	}
+
+	const element =
+		options.forceElement ??
+		pickElementForType(
+			type,
+			pool,
+			rng,
+			options.excludeAtomicNumbers,
+		)
 
 	switch (type) {
 		case 'NAME_TO_SYMBOL': {
@@ -279,6 +288,63 @@ export function generateQuestionSet(
 		})
 		questions.push(question)
 		previousAtomicNumber = question.elementAtomicNumber
+	}
+	return questions
+}
+
+/**
+ * Question types that make sense for a specific element.
+ * Elements with group=null never receive NAME_TO_GROUP.
+ */
+export function getApplicableQuestionTypes(
+	element: ChemicalElement,
+): QuestionType[] {
+	const types: QuestionType[] = [
+		'NAME_TO_SYMBOL',
+		'SYMBOL_TO_NAME',
+		'NAME_TO_ATOMIC_NUMBER',
+		'ATOMIC_NUMBER_TO_NAME',
+		'ELEMENT_TO_CLASSIFICATION',
+	]
+	if (element.group !== null) {
+		types.push('NAME_TO_GROUP')
+	}
+	return types
+}
+
+/**
+ * Build a fixed-element training set with diversified types.
+ */
+export function generateSingleElementQuestionSet(
+	element: ChemicalElement,
+	count: number,
+	rng: Rng,
+): QuizQuestion[] {
+	if (count <= 0) {
+		return []
+	}
+	const types = getApplicableQuestionTypes(element)
+	if (types.length === 0) {
+		throw new Error('No applicable question types for element')
+	}
+	const order = shuffleInPlace([...types], rng)
+	const questions: QuizQuestion[] = []
+	let previousType: QuestionType | null = null
+
+	for (let i = 0; i < count; i += 1) {
+		let type = order[i % order.length]!
+		// Prefer avoiding identical consecutive types when the pool allows it.
+		if (type === previousType && order.length > 1) {
+			const alt = order[(i + 1) % order.length]!
+			type = alt
+		}
+		const question = generateQuestion({
+			rng,
+			type,
+			forceElement: element,
+		})
+		questions.push(question)
+		previousType = type
 	}
 	return questions
 }

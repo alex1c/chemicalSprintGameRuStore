@@ -2,6 +2,7 @@ import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { ROUTES } from '../constants/routes'
 import { AchievementsScreen } from '../screens/AchievementsScreen'
+import { ElementDetailScreen } from '../screens/ElementDetailScreen'
 import { GameScreen } from '../screens/GameScreen'
 import { HomeScreen } from '../screens/HomeScreen'
 import { LearnScreen } from '../screens/LearnScreen'
@@ -56,6 +57,14 @@ export function RootNavigator() {
 					name={ROUTES.Progress}
 					component={ProgressScreen}
 					options={{ title: 'Прогресс' }}
+				/>
+				<Stack.Screen
+					name={ROUTES.ElementDetail}
+					component={ElementDetailScreen}
+					options={({ route }) => ({
+						title: `№${route.params.atomicNumber}`,
+						headerBackTitle: 'Назад',
+					})}
 				/>
 				<Stack.Screen
 					name={ROUTES.Learn}

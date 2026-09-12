@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { ROUTES } from '../constants/routes'
+import { getElementByAtomicNumber } from '../data/chemistry'
 import { getGameModeConfig } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
 import { theme } from '../theme'
@@ -14,7 +15,16 @@ function resultHeadline(
 	accuracy: number,
 	correctCount: number,
 	total: number,
+	focusAtomicNumber?: number,
 ): string {
+	if (modeId === 'ELEMENT_TRAINING') {
+		const element = focusAtomicNumber
+			? getElementByAtomicNumber(focusAtomicNumber)
+			: null
+		return element
+			? `Тренировка ${element.symbol} завершена`
+			: 'Тренировка элемента завершена'
+	}
 	if (modeId === 'WEAK_ELEMENTS') {
 		return 'Тренировка слабых элементов завершена'
 	}
@@ -37,7 +47,7 @@ function resultHeadline(
 }
 
 /**
- * Mode-aware post-session summary. Restart keeps the same mode.
+ * Mode-aware post-session summary. Restart keeps the same mode / element.
  */
 export function ResultScreen({ navigation, route }: Props) {
 	const {
@@ -54,9 +64,11 @@ export function ResultScreen({ navigation, route }: Props) {
 		atomsEarned,
 		atomBalance,
 		rewardBreakdown,
+		focusAtomicNumber,
 	} = route.params
 
 	const mode = getGameModeConfig(modeId)
+	const isElementTraining = modeId === 'ELEMENT_TRAINING'
 	const answered = correctCount + wrongCount
 	const accuracyPct = Math.round(accuracy * 100)
 	const headline = resultHeadline(
@@ -64,6 +76,7 @@ export function ResultScreen({ navigation, route }: Props) {
 		accuracy,
 		correctCount,
 		mode.endCondition === 'fixed_count' ? questionCount : answered,
+		focusAtomicNumber,
 	)
 	const isPerfect =
 		mode.endCondition === 'fixed_count' &&
@@ -76,7 +89,7 @@ export function ResultScreen({ navigation, route }: Props) {
 				<Text style={styles.emoji}>{mode.icon}</Text>
 				<Text style={styles.modeTitle}>{mode.titleRu}</Text>
 				<Text style={styles.headline}>{headline}</Text>
-				{isPerfect ? (
+				{isPerfect && !isElementTraining ? (
 					<Text style={styles.perfect}>Идеальный спринт!</Text>
 				) : null}
 
@@ -93,8 +106,14 @@ export function ResultScreen({ navigation, route }: Props) {
 				)}
 
 				<Text style={styles.meta}>{accuracyPct}% точность</Text>
-				<Text style={styles.meta}>Очки: {score}</Text>
-				<Text style={styles.meta}>🔥 Лучшая серия: {bestStreak}</Text>
+				{!isElementTraining ? (
+					<>
+						<Text style={styles.meta}>Очки: {score}</Text>
+						<Text style={styles.meta}>
+							🔥 Лучшая серия: {bestStreak}
+						</Text>
+					</>
+				) : null}
 
 				<View style={styles.atomsBlock}>
 					<Text style={styles.atomsEarned}>⚛ +{atomsEarned}</Text>
@@ -106,46 +125,80 @@ export function ResultScreen({ navigation, route }: Props) {
 					</Text>
 				</View>
 
-				<View style={styles.badges}>
-					{rewardBreakdown.streakBonuses > 0 ? (
-						<Badge text={`Серия +${rewardBreakdown.streakBonuses}`} />
-					) : null}
-					{rewardBreakdown.newRecord > 0 ? (
-						<Badge text={`Рекорд +${rewardBreakdown.newRecord}`} />
-					) : null}
-					{rewardBreakdown.perfect > 0 ? (
-						<Badge text={`Идеально +${rewardBreakdown.perfect}`} />
-					) : null}
-				</View>
+				{!isElementTraining ? (
+					<>
+						<View style={styles.badges}>
+							{rewardBreakdown.streakBonuses > 0 ? (
+								<Badge
+									text={`Серия +${rewardBreakdown.streakBonuses}`}
+								/>
+							) : null}
+							{rewardBreakdown.newRecord > 0 ? (
+								<Badge text={`Рекорд +${rewardBreakdown.newRecord}`} />
+							) : null}
+							{rewardBreakdown.perfect > 0 ? (
+								<Badge
+									text={`Идеально +${rewardBreakdown.perfect}`}
+								/>
+							) : null}
+						</View>
 
-				{isNewBestScore || isNewModeRecord ? (
-					<View style={styles.recordBanner}>
-						<Text style={styles.recordText}>Новый рекорд режима!</Text>
-					</View>
-				) : (
-					<Text style={styles.recordMuted}>
-						Рекорд: {Math.max(previousBestScore, score)}
-					</Text>
-				)}
+						{isNewBestScore || isNewModeRecord ? (
+							<View style={styles.recordBanner}>
+								<Text style={styles.recordText}>
+									Новый рекорд режима!
+								</Text>
+							</View>
+						) : (
+							<Text style={styles.recordMuted}>
+								Рекорд: {Math.max(previousBestScore, score)}
+							</Text>
+						)}
+					</>
+				) : null}
 			</View>
 
 			<View style={styles.actions}>
-				<PrimaryButton
-					label="ЕЩЁ РАЗ"
-					accessibilityLabel="Сыграть ещё раз в тот же режим"
-					onPress={() =>
-						navigation.replace(ROUTES.Game, {
-							modeId,
-							sessionKey: Date.now(),
-						})
-					}
-				/>
-				<PrimaryButton
-					label="НА ГЛАВНУЮ"
-					variant="secondary"
-					accessibilityLabel="Вернуться на главную"
-					onPress={() => navigation.navigate(ROUTES.Home)}
-				/>
+				{isElementTraining && focusAtomicNumber != null ? (
+					<>
+						<PrimaryButton
+							label="ТРЕНИРОВАТЬ ЕЩЁ"
+							accessibilityLabel="Тренировать этот элемент ещё раз"
+							onPress={() =>
+								navigation.replace(ROUTES.Game, {
+									modeId: 'ELEMENT_TRAINING',
+									focusAtomicNumber,
+									sessionKey: Date.now(),
+								})
+							}
+						/>
+						<PrimaryButton
+							label="К ПРОГРЕССУ"
+							variant="secondary"
+							accessibilityLabel="Вернуться к прогрессу"
+							onPress={() => navigation.navigate(ROUTES.Progress)}
+						/>
+					</>
+				) : (
+					<>
+						<PrimaryButton
+							label="ЕЩЁ РАЗ"
+							accessibilityLabel="Сыграть ещё раз в тот же режим"
+							onPress={() =>
+								navigation.replace(ROUTES.Game, {
+									modeId,
+									sessionKey: Date.now(),
+								})
+							}
+						/>
+						<PrimaryButton
+							label="НА ГЛАВНУЮ"
+							variant="secondary"
+							accessibilityLabel="Вернуться на главную"
+							onPress={() => navigation.navigate(ROUTES.Home)}
+						/>
+					</>
+				)}
 			</View>
 		</Screen>
 	)

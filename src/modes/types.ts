@@ -1,7 +1,7 @@
 import type { HintType } from '../economy/config'
 
 /**
- * All playable Classic Sprint variants for PHASE 5.
+ * Playable modes including contextual single-element training (not on Modes list).
  */
 export type GameModeId =
 	| 'CLASSIC'
@@ -9,6 +9,7 @@ export type GameModeId =
 	| 'NO_MISTAKE'
 	| 'MIXED'
 	| 'WEAK_ELEMENTS'
+	| 'ELEMENT_TRAINING'
 
 export type SessionEndCondition = 'fixed_count' | 'timed' | 'until_mistake'
 

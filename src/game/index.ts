@@ -15,6 +15,8 @@ export { SCORING_CONFIG, computeCorrectAnswerPoints } from './scoring'
 export {
 	generateQuestion,
 	generateQuestionSet,
+	generateSingleElementQuestionSet,
+	getApplicableQuestionTypes,
 } from './questions'
 
 export { evaluateAnswer } from './evaluate'

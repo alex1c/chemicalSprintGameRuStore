@@ -7,6 +7,7 @@ export const ROUTES = {
 	Result: 'Result',
 	Modes: 'Modes',
 	Progress: 'Progress',
+	ElementDetail: 'ElementDetail',
 	Learn: 'Learn',
 	Achievements: 'Achievements',
 	Settings: 'Settings',

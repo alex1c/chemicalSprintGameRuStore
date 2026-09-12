@@ -6,7 +6,11 @@ import {
 	type GameModeId,
 	type SessionEndReason,
 } from '../modes'
-import { generateQuestion, generateQuestionSet } from './questions'
+import {
+	generateQuestion,
+	generateQuestionSet,
+	generateSingleElementQuestionSet,
+} from './questions'
 import { evaluateAnswer } from './evaluate'
 import { createSeededRng, defaultRng, pickOne, type Rng } from './rng'
 import {
@@ -39,7 +43,12 @@ export interface CreateSessionOptions {
 	/** Absolute deadline; defaults from mode duration when timed. */
 	deadlineAt?: number | null
 	nowMs?: number
+	/** Lock all questions to one element (ELEMENT_TRAINING). */
+	focusAtomicNumber?: number
+	/** Optional prebuilt question list (tests / specialized factories). */
+	questions?: QuizQuestion[]
 }
+
 
 function resolveRng(options: CreateSessionOptions): Rng {
 	return (
@@ -66,16 +75,35 @@ export function createGameSession(
 		mode.poolSize ??
 		CLASSIC_SESSION_QUESTION_COUNT
 
-	const questions = generateQuestionSet(
-		Math.max(poolSize, 1),
-		rng,
-		options.types ?? QUESTION_TYPES,
-		{
-			avoidConsecutiveElementRepeats:
-				options.avoidConsecutiveElementRepeats ?? true,
-			elements: options.elements,
-		},
-	)
+	let questions: QuizQuestion[]
+	if (options.questions && options.questions.length > 0) {
+		questions = [...options.questions]
+	} else if (typeof options.focusAtomicNumber === 'number') {
+		const focus = ELEMENTS.find(
+			(el) => el.atomicNumber === options.focusAtomicNumber,
+		)
+		if (!focus) {
+			throw new Error(
+				`Unknown focusAtomicNumber: ${options.focusAtomicNumber}`,
+			)
+		}
+		questions = generateSingleElementQuestionSet(
+			focus,
+			Math.max(poolSize, 1),
+			rng,
+		)
+	} else {
+		questions = generateQuestionSet(
+			Math.max(poolSize, 1),
+			rng,
+			options.types ?? QUESTION_TYPES,
+			{
+				avoidConsecutiveElementRepeats:
+					options.avoidConsecutiveElementRepeats ?? true,
+				elements: options.elements,
+			},
+		)
+	}
 
 	const deadlineAt =
 		options.deadlineAt !== undefined

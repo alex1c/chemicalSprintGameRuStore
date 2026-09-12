@@ -359,6 +359,7 @@ function sanitizeModeStats(value: unknown): ModeStatsMap {
 		'NO_MISTAKE',
 		'MIXED',
 		'WEAK_ELEMENTS',
+		'ELEMENT_TRAINING',
 	]
 	const result = { ...defaults }
 	for (const modeId of modeIds) {

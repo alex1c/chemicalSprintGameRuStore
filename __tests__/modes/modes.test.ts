@@ -31,13 +31,15 @@ import {
 } from '../../src/storage'
 
 describe('game mode config', () => {
-	it('registers all five modes with expected hints and end conditions', () => {
+	it('registers all five hub modes with expected hints and end conditions', () => {
 		expect(GAME_MODE_ORDER).toHaveLength(5)
 		expect(getGameModeConfig('CLASSIC').questionCount).toBe(10)
 		expect(getGameModeConfig('TIMED_60').durationMs).toBe(60_000)
 		expect(getGameModeConfig('NO_MISTAKE').endCondition).toBe('until_mistake')
 		expect(getGameModeConfig('MIXED').questionCount).toBe(15)
 		expect(getGameModeConfig('WEAK_ELEMENTS').id).toBe('WEAK_ELEMENTS')
+		expect(getGameModeConfig('ELEMENT_TRAINING').questionCount).toBe(5)
+		expect(GAME_MODE_ORDER.includes('ELEMENT_TRAINING')).toBe(false)
 
 		expect(isHintAllowed('TIMED_60', 'saveStreak')).toBe(false)
 		expect(isHintAllowed('NO_MISTAKE', 'saveStreak')).toBe(false)

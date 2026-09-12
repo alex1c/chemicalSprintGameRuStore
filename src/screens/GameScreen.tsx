@@ -28,11 +28,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Game'>
 export function GameScreen({ navigation, route }: Props) {
 	const sessionKey = route.params?.sessionKey ?? 0
 	const modeId = route.params?.modeId ?? 'CLASSIC'
+	const focusAtomicNumber = route.params?.focusAtomicNumber
 	return (
 		<ModeGamePlay
-			key={`${modeId}-${sessionKey}`}
+			key={`${modeId}-${focusAtomicNumber ?? 'any'}-${sessionKey}`}
 			navigation={navigation}
 			modeId={modeId}
+			focusAtomicNumber={focusAtomicNumber}
 		/>
 	)
 }
@@ -40,9 +42,11 @@ export function GameScreen({ navigation, route }: Props) {
 function ModeGamePlay({
 	navigation,
 	modeId,
+	focusAtomicNumber,
 }: {
 	navigation: Props['navigation']
 	modeId: GameModeId
+	focusAtomicNumber?: number
 }) {
 	const mode = getGameModeConfig(modeId)
 
@@ -64,9 +68,10 @@ function ModeGamePlay({
 				atomBalance: result.atomBalance,
 				rewardBreakdown: result.rewardBreakdown,
 				endReason: result.endReason,
+				focusAtomicNumber,
 			})
 		},
-		[navigation],
+		[navigation, focusAtomicNumber],
 	)
 
 	const {
@@ -89,7 +94,7 @@ function ModeGamePlay({
 		useSaveStreak,
 		canAffordHint,
 		isHintAvailable,
-	} = useGameSession(modeId, handleComplete)
+	} = useGameSession(modeId, handleComplete, focusAtomicNumber)
 
 	if (weakUnavailable) {
 		return (
