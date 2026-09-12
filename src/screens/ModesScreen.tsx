@@ -9,6 +9,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
 import { Screen } from '../components/Screen'
+import { BannerAd } from '../ads'
+import { trackEvent } from '../analytics'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
 import {
@@ -67,7 +69,9 @@ export function ModesScreen({ navigation }: Props) {
 	)
 
 	const startMode = (modeId: GameModeId) => {
+		trackEvent('mode_selected', { mode: modeId })
 		if (modeId === 'DAILY') {
+			trackEvent('daily_started')
 			navigation.navigate(ROUTES.Game, {
 				modeId: 'DAILY',
 				dailyDateKey: todayKey,
@@ -75,6 +79,7 @@ export function ModesScreen({ navigation }: Props) {
 			})
 			return
 		}
+		trackEvent('game_started', { mode: modeId })
 		navigation.navigate(ROUTES.Game, {
 			modeId,
 			sessionKey: Date.now(),
@@ -159,6 +164,7 @@ export function ModesScreen({ navigation }: Props) {
 					)
 				})}
 			</ScrollView>
+			<BannerAd placement="secondary" />
 		</Screen>
 	)
 }

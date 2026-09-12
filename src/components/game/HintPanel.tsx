@@ -148,7 +148,12 @@ export function HintPanel({
 						)
 					})}
 					{insufficientMessage ? (
-						<Text style={styles.warn}>{insufficientMessage}</Text>
+						<>
+							<Text style={styles.warn}>{insufficientMessage}</Text>
+							<Text style={styles.rewardHint}>
+								Можно получить +10 ⚛ за просмотр рекламы на главной
+							</Text>
+						</>
 					) : null}
 				</Animated.View>
 			) : null}
@@ -246,5 +251,11 @@ const styles = StyleSheet.create({
 		...theme.typography.caption,
 		color: theme.colors.error,
 		textAlign: 'center',
+	},
+	rewardHint: {
+		...theme.typography.caption,
+		color: theme.colors.brandSoft,
+		textAlign: 'center',
+		fontWeight: '600',
 	},
 })

@@ -85,6 +85,30 @@ export function SettingsScreen({ navigation }: Props) {
 				</Text>
 			</Pressable>
 
+			<Text style={styles.section}>Конфиденциальность</Text>
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel="Открыть сведения о конфиденциальности"
+				onPress={() => navigation.navigate(ROUTES.Privacy)}
+				style={({ pressed }) => [
+					styles.row,
+					pressed ? styles.rowPressed : null,
+				]}
+			>
+				<Text style={styles.rowTitle}>Конфиденциальность</Text>
+				<Text style={styles.rowHint}>
+					Локальный прогресс, реклама Яндекса, аналитика
+				</Text>
+			</Pressable>
+
+			<Text style={styles.section}>Реклама</Text>
+			<View style={styles.about}>
+				<Text style={styles.aboutBody}>
+					В приложении используется реклама Яндекса (баннеры, редкий
+					межстраничный показ и добровольное rewarded-видео за атомы).
+				</Text>
+			</View>
+
 			<Text style={styles.section}>О приложении</Text>
 			<View style={styles.about}>
 				<Text style={styles.aboutTitle}>{APP_DISPLAY_NAME}</Text>

@@ -10,6 +10,8 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
 import { Screen } from '../components/Screen'
+import { BannerAd } from '../ads'
+import { trackEvent } from '../analytics'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
 import { ELEMENTS, getElementByAtomicNumber } from '../data/chemistry'
@@ -59,6 +61,7 @@ export function ProgressScreen({ navigation }: Props) {
 
 	useFocusEffect(
 		useCallback(() => {
+			trackEvent('progress_opened')
 			void refresh()
 		}, [refresh]),
 	)
@@ -221,6 +224,7 @@ export function ProgressScreen({ navigation }: Props) {
 					)
 				}}
 			/>
+			<BannerAd placement="secondary" />
 		</Screen>
 	)
 }

@@ -9,7 +9,10 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
 import { AtomBalanceChip } from '../components/game'
 import { PrimaryButton } from '../components/PrimaryButton'
+import { RewardedAtomsButton } from '../components/RewardedAtomsButton'
 import { Screen } from '../components/Screen'
+import { BannerAd } from '../ads'
+import { trackEvent } from '../analytics'
 import { APP_DISPLAY_NAME } from '../constants/app'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
@@ -68,6 +71,7 @@ export function HomeScreen({ navigation }: Props) {
 	const hasHistory = stats.gamesPlayed > 0
 
 	const startDaily = () => {
+		trackEvent('daily_started')
 		navigation.navigate(ROUTES.Game, {
 			modeId: 'DAILY',
 			dailyDateKey: todayKey,
@@ -79,6 +83,12 @@ export function HomeScreen({ navigation }: Props) {
 		<Screen>
 			<View style={styles.balanceRow}>
 				<AtomBalanceChip balance={atomBalance} ready={ready} />
+				<RewardedAtomsButton
+					compact
+					onGranted={({ atomBalance: next }) => {
+						setAtomBalance(next)
+					}}
+				/>
 			</View>
 
 			<View style={styles.hero}>
@@ -164,14 +174,17 @@ export function HomeScreen({ navigation }: Props) {
 				<PrimaryButton
 					label="ИГРАТЬ"
 					accessibilityLabel="Играть в классический спринт"
-					onPress={() =>
+					onPress={() => {
+						trackEvent('game_started', { mode: 'CLASSIC' })
 						navigation.navigate(ROUTES.Game, {
 							modeId: 'CLASSIC',
 							sessionKey: Date.now(),
 						})
-					}
+					}}
 				/>
 			</View>
+
+			<BannerAd placement="home" />
 
 			<View style={styles.secondary}>
 				<SecondaryLink
@@ -234,8 +247,12 @@ function SecondaryLink({
 
 const styles = StyleSheet.create({
 	balanceRow: {
-		alignItems: 'flex-end',
+		flexDirection: 'row',
+		alignItems: 'center',
+		justifyContent: 'space-between',
+		gap: theme.spacing.sm,
 		marginBottom: theme.spacing.sm,
+		flexWrap: 'wrap',
 	},
 	hero: {
 		alignItems: 'center',

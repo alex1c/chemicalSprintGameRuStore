@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, Text, View } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
+import {
+	runResultExitWithOptionalInterstitial,
+	type AdsPersistedState,
+} from '../ads'
+import { trackEvent } from '../analytics'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { ROUTES } from '../constants/routes'
@@ -14,6 +19,7 @@ import { useHapticsEnabled } from '../hooks/useHapticsEnabled'
 import { useReducedMotion } from '../hooks/useReducedMotion'
 import { getGameModeConfig } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
+import { loadAdsState, saveAdsState } from '../stats'
 import { theme } from '../theme'
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Result'>
@@ -110,6 +116,47 @@ export function ResultScreen({ navigation, route }: Props) {
 	const rewardScale = useRef(new Animated.Value(reduceMotion ? 1 : 0.85)).current
 	const rewardOpacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current
 	const celebrationFired = useRef(false)
+	const exitBusyRef = useRef(false)
+	const adsStateRef = useRef<AdsPersistedState | null>(null)
+
+	useEffect(() => {
+		void loadAdsState().then((ads) => {
+			adsStateRef.current = ads
+		})
+		trackEvent('game_completed', {
+			mode: modeId,
+			score,
+			correctCount,
+			accuracy: accuracyPct,
+		})
+		if (isDaily && isDailyFirstCompletion) {
+			trackEvent('daily_completed', {
+				streak: dailyCurrentStreak,
+			})
+		}
+		for (const id of newlyUnlockedAchievementIds) {
+			trackEvent('achievement_unlocked', { achievementId: id })
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps -- fire once on mount
+	}, [])
+
+	const exitWithOptionalAd = (navigate: () => void) => {
+		void (async () => {
+			const ads = adsStateRef.current ?? (await loadAdsState())
+			adsStateRef.current = ads
+			await runResultExitWithOptionalInterstitial({
+				adsState: ads,
+				modeId,
+				completed: true,
+				busyRef: exitBusyRef,
+				persistInterstitialShown: async (next) => {
+					adsStateRef.current = next
+					await saveAdsState(next)
+				},
+				navigate,
+			})
+		})()
+	}
 
 	useEffect(() => {
 		if (celebrationFired.current) {
@@ -300,18 +347,24 @@ export function ResultScreen({ navigation, route }: Props) {
 							label="ТРЕНИРОВАТЬ ЕЩЁ"
 							accessibilityLabel="Тренировать этот элемент ещё раз"
 							onPress={() =>
-								navigation.replace(ROUTES.Game, {
-									modeId: 'ELEMENT_TRAINING',
-									focusAtomicNumber,
-									sessionKey: Date.now(),
-								})
+								exitWithOptionalAd(() =>
+									navigation.replace(ROUTES.Game, {
+										modeId: 'ELEMENT_TRAINING',
+										focusAtomicNumber,
+										sessionKey: Date.now(),
+									}),
+								)
 							}
 						/>
 						<PrimaryButton
 							label="К ПРОГРЕССУ"
 							variant="secondary"
 							accessibilityLabel="Вернуться к прогрессу"
-							onPress={() => navigation.navigate(ROUTES.Progress)}
+							onPress={() =>
+								exitWithOptionalAd(() =>
+									navigation.navigate(ROUTES.Progress),
+								)
+							}
 						/>
 					</>
 				) : isDaily ? (
@@ -320,18 +373,24 @@ export function ResultScreen({ navigation, route }: Props) {
 							label="ПОВТОРИТЬ"
 							accessibilityLabel="Повторить спринт дня"
 							onPress={() =>
-								navigation.replace(ROUTES.Game, {
-									modeId: 'DAILY',
-									dailyDateKey: dailyDateKey,
-									sessionKey: Date.now(),
-								})
+								exitWithOptionalAd(() =>
+									navigation.replace(ROUTES.Game, {
+										modeId: 'DAILY',
+										dailyDateKey: dailyDateKey,
+										sessionKey: Date.now(),
+									}),
+								)
 							}
 						/>
 						<PrimaryButton
 							label="НА ГЛАВНУЮ"
 							variant="secondary"
 							accessibilityLabel="Вернуться на главную"
-							onPress={() => navigation.navigate(ROUTES.Home)}
+							onPress={() =>
+								exitWithOptionalAd(() =>
+									navigation.navigate(ROUTES.Home),
+								)
+							}
 						/>
 					</>
 				) : (
@@ -340,17 +399,23 @@ export function ResultScreen({ navigation, route }: Props) {
 							label="ЕЩЁ РАЗ"
 							accessibilityLabel="Сыграть ещё раз в тот же режим"
 							onPress={() =>
-								navigation.replace(ROUTES.Game, {
-									modeId,
-									sessionKey: Date.now(),
-								})
+								exitWithOptionalAd(() =>
+									navigation.replace(ROUTES.Game, {
+										modeId,
+										sessionKey: Date.now(),
+									}),
+								)
 							}
 						/>
 						<PrimaryButton
 							label="НА ГЛАВНУЮ"
 							variant="secondary"
 							accessibilityLabel="Вернуться на главную"
-							onPress={() => navigation.navigate(ROUTES.Home)}
+							onPress={() =>
+								exitWithOptionalAd(() =>
+									navigation.navigate(ROUTES.Home),
+								)
+							}
 						/>
 					</>
 				)}

@@ -26,7 +26,18 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-system-ui"
-    ]
+      "expo-system-ui",
+      "./plugins/withYandexMobileAds"
+    ],
+    "extra": {
+      "ads": {
+        "yandexAppId": "063533b3-e38c-4d3d-af67-848018520f6d",
+        "homeBanner": "R-M-20034045-1",
+        "secondaryBanner": "R-M-20034045-2",
+        "learningBanner": "R-M-20034045-3",
+        "interstitial": "R-M-20034045-4",
+        "rewarded": "R-M-20034045-5"
+      }
+    }
   }
 }

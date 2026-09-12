@@ -5,6 +5,7 @@ export type AtomTransactionType = 'earn' | 'spend'
 export type AtomEarnReason =
 	| 'starting_grant'
 	| 'session_reward'
+	| 'rewarded_ad'
 	| 'manual_test'
 
 export type AtomSpendReason =

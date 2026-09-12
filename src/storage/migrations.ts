@@ -1,5 +1,7 @@
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
 import { sanitizeAchievementsState } from '../achievements'
+import { createEmptyAdsState } from '../ads/policy'
+import type { AdsPersistedState } from '../ads/types'
 import { sanitizeDailyState } from '../daily'
 import {
 	createDefaultModeStatsMap,
@@ -134,6 +136,19 @@ export const MIGRATIONS: Record<number, Migration> = {
 			},
 		}
 	},
+	/**
+	 * v7: ads pacing + rewarded daily counters for monetization.
+	 */
+	7: (raw) => ({
+		...raw,
+		schemaVersion: 7,
+		ads: {
+			rewardedDateKey: null,
+			rewardedCompletedToday: 0,
+			completedGamesSinceInterstitial: 0,
+			eligibleGamesCompleted: 0,
+		},
+	}),
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -342,8 +357,46 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 			doc.learningVisited,
 			defaults.learningVisited,
 		),
+		ads: sanitizeAdsState(doc.ads),
 		updatedAt:
 			typeof doc.updatedAt === 'string' ? doc.updatedAt : defaults.updatedAt,
+	}
+}
+
+function sanitizeAdsState(value: unknown): AdsPersistedState {
+	const defaults = createEmptyAdsState()
+	if (!isRecord(value)) {
+		return defaults
+	}
+	const rewardedCompletedToday = nonNegativeNumberOr(
+		value.rewardedCompletedToday,
+		0,
+	)
+	const completedGamesSinceInterstitial = nonNegativeNumberOr(
+		value.completedGamesSinceInterstitial,
+		0,
+	)
+	const eligibleGamesCompleted = nonNegativeNumberOr(
+		value.eligibleGamesCompleted,
+		0,
+	)
+	const rewardedDateKey =
+		typeof value.rewardedDateKey === 'string' &&
+		/^\d{4}-\d{2}-\d{2}$/.test(value.rewardedDateKey)
+			? value.rewardedDateKey
+			: value.rewardedDateKey === null
+				? null
+				: defaults.rewardedDateKey
+
+	return {
+		rewardedDateKey,
+		// Cap absurd values so corrupt storage cannot unlock infinite grants.
+		rewardedCompletedToday: Math.min(rewardedCompletedToday, 1000),
+		completedGamesSinceInterstitial: Math.min(
+			completedGamesSinceInterstitial,
+			100_000,
+		),
+		eligibleGamesCompleted: Math.min(eligibleGamesCompleted, 100_000),
 	}
 }
 

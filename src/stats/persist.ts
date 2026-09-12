@@ -11,12 +11,25 @@ import {
 import {
 	DAILY_COMPLETION_BONUS,
 	applyDailyCompletion,
+	getLocalDateKey,
 	isDailyCompleted,
 } from '../daily'
 import {
 	evaluateAchievements,
 	type AchievementId,
 } from '../achievements'
+import {
+	REWARDED_ATOM_GRANT,
+	REWARDED_DAILY_MAX,
+} from '../ads/config'
+import {
+	canWatchRewarded,
+	createEmptyAdsState,
+	recordCompletedGame,
+	recordRewardedCompletion,
+	resolveRewardedDayState,
+} from '../ads/policy'
+import type { AdsPersistedState } from '../ads/types'
 import {
 	applyElementOutcome,
 	applyModeSessionToStats,
@@ -402,6 +415,11 @@ async function persistCompletedSessionStatsUnlocked(
 			modeStats: nextModeStats,
 			daily: nextDaily,
 			achievements: achievementEval.nextAchievements,
+			ads: recordCompletedGame(
+				current.ads ?? createEmptyAdsState(),
+				modeId,
+				true,
+			),
 		}
 		await saveAppState(nextState, storage)
 
@@ -617,6 +635,140 @@ export async function markLearningArticleVisited(
 	const learningVisited = [...current.learningVisited, articleId]
 	await saveAppState({ ...current, learningVisited }, storage)
 	return learningVisited
+}
+
+export async function loadAdsState(
+	storage?: KeyValueStorage,
+): Promise<AdsPersistedState> {
+	try {
+		const state = await loadAppState(storage)
+		return state.ads ?? createEmptyAdsState()
+	} catch {
+		return createEmptyAdsState()
+	}
+}
+
+export async function saveAdsState(
+	ads: AdsPersistedState,
+	storage?: KeyValueStorage,
+): Promise<void> {
+	const current = await loadAppState(storage)
+	await saveAppState({ ...current, ads }, storage)
+}
+
+/** In-memory guard against duplicated rewarded callbacks within one process. */
+const grantedRewardedIds = new Set<string>()
+
+export interface RewardedGrantResult {
+	ok: boolean
+	granted: boolean
+	atomsGranted: number
+	atomBalance: number
+	ads: AdsPersistedState
+	reason?:
+		| 'limit_reached'
+		| 'duplicate'
+		| 'persist_failed'
+}
+
+/**
+ * Grant +10 ⚛ exactly once per rewardId after confirmed rewarded completion.
+ */
+export async function grantRewardedAtoms(
+	rewardId: string,
+	storage?: KeyValueStorage,
+): Promise<RewardedGrantResult> {
+	if (grantedRewardedIds.has(rewardId)) {
+		const current = await loadAppState(storage)
+		return {
+			ok: true,
+			granted: false,
+			atomsGranted: 0,
+			atomBalance: current.atoms.balance,
+			ads: current.ads ?? createEmptyAdsState(),
+			reason: 'duplicate',
+		}
+	}
+
+	try {
+		const current = await loadAppState(storage)
+		const todayKey = getLocalDateKey()
+		const adsDay = resolveRewardedDayState(
+			current.ads ?? createEmptyAdsState(),
+			todayKey,
+		)
+		if (
+			!canWatchRewarded({
+				dateKey: todayKey,
+				rewardedDateKey: adsDay.rewardedDateKey,
+				rewardedCompletedToday: adsDay.rewardedCompletedToday,
+				dailyMax: REWARDED_DAILY_MAX,
+			})
+		) {
+			return {
+				ok: true,
+				granted: false,
+				atomsGranted: 0,
+				atomBalance: current.atoms.balance,
+				ads: adsDay,
+				reason: 'limit_reached',
+			}
+		}
+
+		const earned = earnAtoms(
+			toEconomyWallet(current.atoms),
+			REWARDED_ATOM_GRANT,
+			'rewarded_ad',
+		)
+		if (!earned.ok) {
+			return {
+				ok: false,
+				granted: false,
+				atomsGranted: 0,
+				atomBalance: current.atoms.balance,
+				ads: adsDay,
+				reason: 'persist_failed',
+			}
+		}
+
+		const nextAds = recordRewardedCompletion(
+			adsDay,
+			todayKey,
+			REWARDED_DAILY_MAX,
+		)
+		const nextState: PersistedAppState = {
+			...current,
+			atoms: toPersistedAtoms(earned.wallet),
+			statistics: {
+				...current.statistics,
+				totalAtomsEarned:
+					current.statistics.totalAtomsEarned + REWARDED_ATOM_GRANT,
+			},
+			ads: nextAds,
+		}
+		await saveAppState(nextState, storage)
+		grantedRewardedIds.add(rewardId)
+		return {
+			ok: true,
+			granted: true,
+			atomsGranted: REWARDED_ATOM_GRANT,
+			atomBalance: earned.wallet.balance,
+			ads: nextAds,
+		}
+	} catch {
+		return {
+			ok: false,
+			granted: false,
+			atomsGranted: 0,
+			atomBalance: 0,
+			ads: createEmptyAdsState(),
+			reason: 'persist_failed',
+		}
+	}
+}
+
+export function resetRewardedGrantGuardForTests(): void {
+	grantedRewardedIds.clear()
 }
 
 /**

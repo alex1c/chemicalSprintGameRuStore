@@ -77,17 +77,18 @@ describe('storage foundation', () => {
 		expect(state.daily.currentStreak).toBe(0)
 		expect(state.daily.history).toEqual({})
 		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
-		expect(state.schemaVersion).toBe(6)
+		expect(state.schemaVersion).toBe(7)
 		expect(state.onboardingCompleted).toBe(true)
 	})
 
 	it('defaults hapticsEnabled true on fresh install', () => {
 		const state = createDefaultPersistedState()
 		expect(state.settings.hapticsEnabled).toBe(true)
-		expect(state.schemaVersion).toBe(6)
+		expect(state.schemaVersion).toBe(7)
+		expect(state.ads.rewardedCompletedToday).toBe(0)
 	})
 
-	it('migrates v5 to v6 with hapticsEnabled true', () => {
+	it('migrates v5 to v6 with hapticsEnabled true then to v7', () => {
 		const migrated = migratePersistedState({
 			schemaVersion: 5,
 			settings: {
@@ -100,10 +101,11 @@ describe('storage foundation', () => {
 			learningVisited: ['groups'],
 			achievements: { unlocked: {} },
 		})
-		expect(migrated.schemaVersion).toBe(6)
+		expect(migrated.schemaVersion).toBe(7)
 		expect(migrated.settings.hapticsEnabled).toBe(true)
 		expect(migrated.onboardingCompleted).toBe(true)
 		expect(migrated.learningVisited).toEqual(['groups'])
+		expect(migrated.ads.eligibleGamesCompleted).toBe(0)
 	})
 
 	it('sanitizes corrupt haptics setting safely', () => {

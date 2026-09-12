@@ -52,6 +52,7 @@ export type RootStackParamList = {
 	[ROUTES.LearningArticle]: { articleId: string }
 	[ROUTES.Achievements]: undefined
 	[ROUTES.Settings]: undefined
+	[ROUTES.Privacy]: undefined
 	[ROUTES.Onboarding]: { manual?: boolean } | undefined
 }
 

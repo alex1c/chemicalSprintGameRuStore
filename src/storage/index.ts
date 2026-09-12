@@ -7,6 +7,7 @@ export {
 	DEFAULT_ATOMS,
 	DEFAULT_ACHIEVEMENTS,
 	DEFAULT_DAILY,
+	DEFAULT_ADS,
 	DEFAULT_HINT_USAGE,
 } from './schema'
 
@@ -18,6 +19,7 @@ export type {
 	AtomsWallet,
 	AchievementsState,
 	DailyState,
+	AdsState,
 	HintUsageStats,
 } from './schema'
 

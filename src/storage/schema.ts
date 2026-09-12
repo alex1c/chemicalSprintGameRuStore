@@ -7,6 +7,8 @@ import {
 	createEmptyAchievementsState,
 	type AchievementsPersistedState,
 } from '../achievements'
+import { createEmptyAdsState } from '../ads/policy'
+import type { AdsPersistedState } from '../ads/types'
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
 import {
 	createEmptyDailyState,
@@ -18,7 +20,7 @@ import {
 	type ModeStatsMap,
 } from '../modes'
 
-export const STORAGE_SCHEMA_VERSION = 6 as const
+export const STORAGE_SCHEMA_VERSION = 7 as const
 
 export interface AppSettings {
 	soundEnabled: boolean
@@ -72,6 +74,9 @@ export type DailyState = DailyStateV4
 /** Achievement unlock map with timestamps. */
 export type AchievementsState = AchievementsPersistedState
 
+/** Rewarded / interstitial pacing counters (schema v7). */
+export type AdsState = AdsPersistedState
+
 /**
  * Root persisted document. Always includes schemaVersion for migrations.
  */
@@ -93,6 +98,8 @@ export interface PersistedAppState {
 	onboardingCompleted: boolean
 	/** Learning article ids the user has opened. */
 	learningVisited: string[]
+	/** Ads pacing + rewarded daily counters. */
+	ads: AdsState
 	updatedAt: string
 }
 
@@ -148,6 +155,8 @@ export const DEFAULT_ACHIEVEMENTS: AchievementsState =
 
 export const DEFAULT_DAILY: DailyState = createEmptyDailyState()
 
+export const DEFAULT_ADS: AdsState = createEmptyAdsState()
+
 export function createDefaultPersistedState(
 	now: () => Date = () => new Date(),
 ): PersistedAppState {
@@ -170,6 +179,7 @@ export function createDefaultPersistedState(
 		completedSessionIds: [],
 		onboardingCompleted: false,
 		learningVisited: [],
+		ads: createEmptyAdsState(),
 		updatedAt: now().toISOString(),
 	}
 }

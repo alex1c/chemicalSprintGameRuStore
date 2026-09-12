@@ -24,10 +24,17 @@ export {
 	updateAppSettings,
 	loadLearningVisited,
 	markLearningArticleVisited,
+	loadAdsState,
+	saveAdsState,
+	grantRewardedAtoms,
+	resetRewardedGrantGuardForTests,
 	syncAchievementsFromState,
 	toEconomyWallet,
 	toPersistedAtoms,
 	buildElementStatsUpdates,
 } from './persist'
 
-export type { PersistCompletedSessionResult } from './persist'
+export type {
+	PersistCompletedSessionResult,
+	RewardedGrantResult,
+} from './persist'

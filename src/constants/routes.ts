@@ -12,6 +12,7 @@ export const ROUTES = {
 	LearningArticle: 'LearningArticle',
 	Achievements: 'Achievements',
 	Settings: 'Settings',
+	Privacy: 'Privacy',
 	Onboarding: 'Onboarding',
 } as const
 

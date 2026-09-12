@@ -9,6 +9,7 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
 import { Screen } from '../components/Screen'
+import { BannerAd } from '../ads'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import { ROUTES } from '../constants/routes'
 import { LEARNING_ARTICLES } from '../learning'
@@ -78,6 +79,7 @@ export function LearnScreen({ navigation }: Props) {
 					)
 				})}
 			</ScrollView>
+			<BannerAd placement="learning" />
 		</Screen>
 	)
 }

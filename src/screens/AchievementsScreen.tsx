@@ -3,6 +3,7 @@ import { FlatList, StyleSheet, Text, View } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { useFocusEffect } from '@react-navigation/native'
 import { Screen } from '../components/Screen'
+import { BannerAd } from '../ads'
 import { MIN_TOUCH_TARGET } from '../constants/gameplay'
 import {
 	ACHIEVEMENT_DEFINITIONS,
@@ -130,6 +131,7 @@ export function AchievementsScreen(_props: Props) {
 					)
 				}}
 			/>
+			<BannerAd placement="learning" />
 		</Screen>
 	)
 }
