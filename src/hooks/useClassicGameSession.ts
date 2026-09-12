@@ -64,6 +64,7 @@ export interface UseGameSessionResult {
 	displayQuestionNumber: number
 	remainingSeconds: number | null
 	atomBalance: number
+	atomsReady: boolean
 	hintsOpen: boolean
 	setHintsOpen: (open: boolean) => void
 	hintBusy: boolean
@@ -508,6 +509,7 @@ export function useGameSession(
 			? getRemainingSeconds(session, nowMs)
 			: null,
 		atomBalance: wallet?.balance ?? 0,
+		atomsReady: wallet !== null,
 		hintsOpen,
 		setHintsOpen,
 		hintBusy,

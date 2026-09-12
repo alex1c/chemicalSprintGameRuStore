@@ -208,6 +208,7 @@ const styles = StyleSheet.create({
 	cardDesc: {
 		...theme.typography.body,
 		color: theme.colors.textSecondary,
+		flexShrink: 1,
 	},
 	cardRecord: {
 		...theme.typography.caption,
@@ -217,7 +218,8 @@ const styles = StyleSheet.create({
 	},
 	weakNote: {
 		...theme.typography.caption,
-		color: theme.colors.accent,
+		color: theme.colors.warning,
 		marginTop: theme.spacing.xxs,
+		lineHeight: 18,
 	},
 })

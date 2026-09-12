@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import {
@@ -14,6 +14,12 @@ import {
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { useGameSession } from '../hooks/useClassicGameSession'
+import { useHapticsEnabled } from '../hooks/useHapticsEnabled'
+import {
+	hapticCorrect,
+	hapticHintPurchase,
+	hapticWrong,
+} from '../haptics'
 import { ROUTES } from '../constants/routes'
 import { getGameModeConfig, type GameModeId } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
@@ -53,6 +59,8 @@ function ModeGamePlay({
 	dailyDateKey?: string
 }) {
 	const mode = getGameModeConfig(modeId)
+	const hapticsEnabled = useHapticsEnabled()
+	const lastFeedbackKey = useRef<string | null>(null)
 
 	const handleComplete = useCallback(
 		(result: PersistCompletedSessionResult) => {
@@ -96,17 +104,49 @@ function ModeGamePlay({
 		displayQuestionNumber,
 		remainingSeconds,
 		atomBalance,
+		atomsReady,
 		hintsOpen,
 		setHintsOpen,
 		hintBusy,
 		insufficientMessage,
 		allowedHints,
 		submitAnswer,
-		useHint,
-		useSaveStreak,
+		useHint: applyHint,
+		useSaveStreak: applySaveStreak,
 		canAffordHint,
 		isHintAvailable,
 	} = useGameSession(modeId, handleComplete, focusAtomicNumber, dailyDateKey)
+
+	// Fire answer haptics once per feedback episode (never block gameplay).
+	useEffect(() => {
+		if (!feedback || !session) {
+			lastFeedbackKey.current = null
+			return
+		}
+		const key = `${session.answers.length}:${feedback.correct}:${feedback.selectedAnswer}`
+		if (lastFeedbackKey.current === key) {
+			return
+		}
+		lastFeedbackKey.current = key
+		if (feedback.correct) {
+			hapticCorrect(hapticsEnabled)
+		} else {
+			hapticWrong(hapticsEnabled)
+		}
+	}, [feedback, session, hapticsEnabled])
+
+	const handleUseHint = useCallback(
+		(type: Parameters<typeof applyHint>[0]) => {
+			hapticHintPurchase(hapticsEnabled)
+			applyHint(type)
+		},
+		[hapticsEnabled, applyHint],
+	)
+
+	const handleSaveStreak = useCallback(() => {
+		hapticHintPurchase(hapticsEnabled)
+		applySaveStreak()
+	}, [hapticsEnabled, applySaveStreak])
 
 	if (weakUnavailable) {
 		return (
@@ -146,55 +186,62 @@ function ModeGamePlay({
 
 	return (
 		<Screen edges={['top', 'left', 'right', 'bottom']}>
-			<View style={styles.topRow}>
-				{mode.endCondition === 'timed' ? (
-					<View style={styles.timedHud}>
-						<Text
-							accessibilityRole="text"
-							accessibilityLabel={`Осталось ${remainingSeconds ?? 0} секунд`}
-							style={styles.timer}
-						>
-							⏱ {remainingSeconds ?? 0} сек
-						</Text>
-						<Text style={styles.answered}>
-							Отвечено: {stats.answeredCount}
-						</Text>
-						<Text style={styles.streak}>🔥 {stats.currentStreak}</Text>
-						<Text style={styles.score}>Очки: {stats.score}</Text>
-					</View>
-				) : mode.endCondition === 'until_mistake' ? (
-					<View style={styles.timedHud}>
-						<Text style={styles.noMistakeLabel}>До первой ошибки</Text>
-						<Text style={styles.streak}>🔥 {stats.currentStreak}</Text>
-						<Text style={styles.answered}>
-							Верно: {stats.correctCount}
-						</Text>
-						<Text style={styles.score}>Очки: {stats.score}</Text>
-					</View>
-				) : (
-					<GameHud
-						questionNumber={displayQuestionNumber}
-						questionCount={session.questionCount}
-						streak={stats.currentStreak}
-						score={stats.score}
-						scoreDelta={
-							session.phase === 'feedback' ? session.lastPointsEarned : 0
-						}
-					/>
-				)}
-				<AtomBalanceChip balance={atomBalance} compact />
-			</View>
-
-			{showFixedProgress ? (
-				<View style={styles.progressWrap}>
-					<GameProgress
-						current={progressCurrent}
-						total={session.questionCount}
+			{/* Status / progress — secondary to the question */}
+			<View style={styles.statusBlock}>
+				<View style={styles.topRow}>
+					{mode.endCondition === 'timed' ? (
+						<View style={styles.timedHud}>
+							<Text
+								accessibilityRole="text"
+								accessibilityLabel={`Осталось ${remainingSeconds ?? 0} секунд`}
+								style={styles.timer}
+							>
+								⏱ {remainingSeconds ?? 0} сек
+							</Text>
+							<Text style={styles.answered}>
+								Отвечено: {stats.answeredCount}
+							</Text>
+							<Text style={styles.streak}>🔥 {stats.currentStreak}</Text>
+							<Text style={styles.score}>Очки: {stats.score}</Text>
+						</View>
+					) : mode.endCondition === 'until_mistake' ? (
+						<View style={styles.timedHud}>
+							<Text style={styles.noMistakeLabel}>До первой ошибки</Text>
+							<Text style={styles.streak}>🔥 {stats.currentStreak}</Text>
+							<Text style={styles.answered}>
+								Верно: {stats.correctCount}
+							</Text>
+							<Text style={styles.score}>Очки: {stats.score}</Text>
+						</View>
+					) : (
+						<GameHud
+							questionNumber={displayQuestionNumber}
+							questionCount={session.questionCount}
+							streak={stats.currentStreak}
+							score={stats.score}
+							scoreDelta={
+								session.phase === 'feedback' ? session.lastPointsEarned : 0
+							}
+						/>
+					)}
+					<AtomBalanceChip
+						balance={atomBalance}
+						compact
+						ready={atomsReady}
 					/>
 				</View>
-			) : (
-				<View style={styles.progressWrap} />
-			)}
+
+				{showFixedProgress ? (
+					<View style={styles.progressWrap}>
+						<GameProgress
+							current={progressCurrent}
+							total={session.questionCount}
+						/>
+					</View>
+				) : (
+					<View style={styles.progressWrap} />
+				)}
+			</View>
 
 			<ScrollView
 				contentContainerStyle={styles.scrollContent}
@@ -203,6 +250,7 @@ function ModeGamePlay({
 			>
 				{question ? (
 					<>
+						{/* 1. Question first */}
 						<QuestionCard
 							prompt={question.prompt}
 							typeLabel={question.metadata.typeLabelRu}
@@ -210,7 +258,7 @@ function ModeGamePlay({
 
 						{hintState.factText ? (
 							<View style={styles.factCard}>
-								<Text style={styles.factTitle}>💡 Подсказка</Text>
+								<Text style={styles.factTitle}>Факт</Text>
 								<Text style={styles.factText}>{hintState.factText}</Text>
 							</View>
 						) : null}
@@ -225,6 +273,7 @@ function ModeGamePlay({
 							/>
 						) : null}
 
+						{/* 2. Answers */}
 						<View style={styles.choices}>
 							{question.choices.map((choice, index) => {
 								let state: AnswerButtonState = 'idle'
@@ -260,6 +309,7 @@ function ModeGamePlay({
 							})}
 						</View>
 
+						{/* 4. Hints below answers */}
 						{!isAnswerLocked ? (
 							<HintPanel
 								open={hintsOpen}
@@ -269,7 +319,7 @@ function ModeGamePlay({
 								allowedHints={allowedHints}
 								canAffordHint={canAffordHint}
 								isHintAvailable={isHintAvailable}
-								onUseHint={useHint}
+								onUseHint={handleUseHint}
 								insufficientMessage={insufficientMessage}
 								secondChanceActive={
 									hintState.secondChanceActivated &&
@@ -289,7 +339,7 @@ function ModeGamePlay({
 									saveStreakUsed={feedback.saveStreakUsed}
 									streakBeforeWrong={feedback.streakBeforeWrong}
 									canAffordSaveStreak={canAffordHint('saveStreak')}
-									onSaveStreak={useSaveStreak}
+									onSaveStreak={handleSaveStreak}
 								/>
 							</View>
 						) : null}
@@ -301,16 +351,22 @@ function ModeGamePlay({
 }
 
 const styles = StyleSheet.create({
+	statusBlock: {
+		marginBottom: theme.spacing.xs,
+	},
 	topRow: {
+		flexDirection: 'row',
+		alignItems: 'flex-start',
 		gap: theme.spacing.sm,
 	},
 	progressWrap: {
 		marginTop: theme.spacing.sm,
-		marginBottom: theme.spacing.md,
+		marginBottom: theme.spacing.sm,
 	},
 	scrollContent: {
 		paddingBottom: theme.spacing.lg,
 		gap: theme.spacing.md,
+		flexGrow: 1,
 	},
 	choices: {
 		gap: theme.spacing.sm,
@@ -319,23 +375,27 @@ const styles = StyleSheet.create({
 		marginTop: theme.spacing.xs,
 	},
 	factCard: {
-		backgroundColor: theme.colors.accentSoft,
-		borderRadius: theme.radius.md,
+		backgroundColor: theme.colors.surfaceElevated,
+		borderRadius: theme.radius.lg,
 		padding: theme.spacing.md,
 		borderWidth: 1,
-		borderColor: theme.colors.accent,
+		borderColor: theme.colors.info,
 	},
 	factTitle: {
-		...theme.typography.subtitle,
-		fontSize: 15,
-		color: theme.colors.accent,
+		...theme.typography.caption,
+		color: theme.colors.info,
+		fontWeight: '700',
 		marginBottom: theme.spacing.xxs,
+		textTransform: 'uppercase',
+		letterSpacing: 0.4,
 	},
 	factText: {
 		...theme.typography.body,
 		color: theme.colors.textPrimary,
+		lineHeight: 22,
 	},
 	timedHud: {
+		flex: 1,
 		flexDirection: 'row',
 		flexWrap: 'wrap',
 		gap: theme.spacing.sm,
@@ -375,5 +435,6 @@ const styles = StyleSheet.create({
 		...theme.typography.body,
 		color: theme.colors.textSecondary,
 		marginBottom: theme.spacing.lg,
+		lineHeight: 22,
 	},
 })

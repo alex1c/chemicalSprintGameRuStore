@@ -119,6 +119,21 @@ export const MIGRATIONS: Record<number, Migration> = {
 		learningVisited: [],
 		achievements: { unlocked: {} },
 	}),
+	/**
+	 * v6: real haptics setting is now wired in Settings.
+	 * Existing users get hapticsEnabled = true (no other resets).
+	 */
+	6: (raw) => {
+		const previousSettings = isRecord(raw.settings) ? raw.settings : {}
+		return {
+			...raw,
+			schemaVersion: 6,
+			settings: {
+				...previousSettings,
+				hapticsEnabled: true,
+			},
+		}
+	},
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

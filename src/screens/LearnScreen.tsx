@@ -54,16 +54,21 @@ export function LearnScreen({ navigation }: Props) {
 							}
 							style={({ pressed }) => [
 								styles.card,
+								!isVisited ? styles.cardUnvisited : null,
 								pressed ? styles.cardPressed : null,
 							]}
 						>
 							<View style={styles.cardTop}>
 								{article.badgeRu ? (
 									<Text style={styles.badge}>{article.badgeRu}</Text>
-								) : null}
+								) : (
+									<Text style={styles.badgeMuted}>Справка</Text>
+								)}
 								{isVisited ? (
 									<Text style={styles.visited}>✓</Text>
-								) : null}
+								) : (
+									<Text style={styles.unvisited}>новое</Text>
+								)}
 							</View>
 							<Text style={styles.title}>{article.titleRu}</Text>
 							<Text style={styles.preview} numberOfLines={2}>
@@ -102,6 +107,10 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET + 20,
 		...theme.shadows.card,
 	},
+	cardUnvisited: {
+		borderColor: theme.colors.brandSoft,
+		backgroundColor: theme.colors.surfaceElevated,
+	},
 	cardPressed: {
 		backgroundColor: theme.colors.surfaceMuted,
 	},
@@ -115,9 +124,19 @@ const styles = StyleSheet.create({
 		color: theme.colors.accent,
 		fontWeight: '700',
 	},
+	badgeMuted: {
+		...theme.typography.caption,
+		color: theme.colors.textSecondary,
+		fontWeight: '600',
+	},
 	visited: {
 		...theme.typography.caption,
 		color: theme.colors.success,
+		fontWeight: '700',
+	},
+	unvisited: {
+		...theme.typography.caption,
+		color: theme.colors.brandSoft,
 		fontWeight: '700',
 	},
 	title: {
@@ -128,5 +147,6 @@ const styles = StyleSheet.create({
 	preview: {
 		...theme.typography.body,
 		color: theme.colors.textSecondary,
+		lineHeight: 20,
 	},
 })

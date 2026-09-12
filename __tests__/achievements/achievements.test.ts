@@ -167,9 +167,9 @@ describe('achievement evaluation', () => {
 })
 
 describe('onboarding persistence', () => {
-	it('fresh v5 defaults to onboarding incomplete', () => {
+	it('fresh defaults to onboarding incomplete', () => {
 		const fresh = createDefaultPersistedState()
-		expect(fresh.schemaVersion).toBe(5)
+		expect(fresh.schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
 		expect(fresh.onboardingCompleted).toBe(false)
 	})
 

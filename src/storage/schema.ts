@@ -18,7 +18,7 @@ import {
 	type ModeStatsMap,
 } from '../modes'
 
-export const STORAGE_SCHEMA_VERSION = 5 as const
+export const STORAGE_SCHEMA_VERSION = 6 as const
 
 export interface AppSettings {
 	soundEnabled: boolean

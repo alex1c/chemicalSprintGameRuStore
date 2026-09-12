@@ -1,10 +1,17 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { Animated, StyleSheet, Text, View } from 'react-native'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { ROUTES } from '../constants/routes'
 import { ACHIEVEMENT_BY_ID } from '../achievements'
 import { getElementByAtomicNumber } from '../data/chemistry'
+import {
+	hapticAchievement,
+	hapticDailyCompleted,
+} from '../haptics'
+import { useHapticsEnabled } from '../hooks/useHapticsEnabled'
+import { useReducedMotion } from '../hooks/useReducedMotion'
 import { getGameModeConfig } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
 import { theme } from '../theme'
@@ -98,6 +105,52 @@ export function ResultScreen({ navigation, route }: Props) {
 		correctCount === questionCount &&
 		questionCount > 0
 
+	const hapticsEnabled = useHapticsEnabled()
+	const reduceMotion = useReducedMotion()
+	const rewardScale = useRef(new Animated.Value(reduceMotion ? 1 : 0.85)).current
+	const rewardOpacity = useRef(new Animated.Value(reduceMotion ? 1 : 0)).current
+	const celebrationFired = useRef(false)
+
+	useEffect(() => {
+		if (celebrationFired.current) {
+			return
+		}
+		celebrationFired.current = true
+		if (newlyUnlockedAchievementIds.length > 0) {
+			hapticAchievement(hapticsEnabled)
+		} else if (isDaily && isDailyFirstCompletion) {
+			hapticDailyCompleted(hapticsEnabled)
+		}
+	}, [
+		hapticsEnabled,
+		isDaily,
+		isDailyFirstCompletion,
+		newlyUnlockedAchievementIds.length,
+	])
+
+	useEffect(() => {
+		if (reduceMotion) {
+			rewardScale.setValue(1)
+			rewardOpacity.setValue(1)
+			return
+		}
+		rewardScale.setValue(0.85)
+		rewardOpacity.setValue(0)
+		Animated.parallel([
+			Animated.timing(rewardOpacity, {
+				toValue: 1,
+				duration: theme.motion.rewardAppear,
+				useNativeDriver: true,
+			}),
+			Animated.spring(rewardScale, {
+				toValue: 1,
+				friction: 6,
+				tension: 120,
+				useNativeDriver: true,
+			}),
+		]).start()
+	}, [reduceMotion, rewardOpacity, rewardScale, atomsEarned])
+
 	return (
 		<Screen edges={['top', 'left', 'right', 'bottom']}>
 			<View style={styles.content}>
@@ -189,7 +242,15 @@ export function ResultScreen({ navigation, route }: Props) {
 					</View>
 				) : null}
 
-				<View style={styles.atomsBlock}>
+				<Animated.View
+					style={[
+						styles.atomsBlock,
+						{
+							opacity: rewardOpacity,
+							transform: [{ scale: rewardScale }],
+						},
+					]}
+				>
 					<Text style={styles.atomsEarned}>⚛ +{atomsEarned}</Text>
 					<Text style={styles.atomsBalance}>
 						Заработано: +{atomsEarned} ⚛
@@ -197,7 +258,7 @@ export function ResultScreen({ navigation, route }: Props) {
 					<Text style={styles.atomsBalance}>
 						Баланс: {atomBalance} ⚛
 					</Text>
-				</View>
+				</Animated.View>
 
 				{!isElementTraining && !isDailyReplay ? (
 					<>

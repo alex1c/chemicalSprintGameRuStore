@@ -61,7 +61,7 @@ describe('storage foundation', () => {
 		})
 
 		expect(state.settings.soundEnabled).toBe(true)
-		expect(state.settings.hapticsEnabled).toBe(false)
+		expect(state.settings.hapticsEnabled).toBe(true)
 		expect(state.statistics.gamesPlayed).toBe(0)
 		expect(state.statistics.bestScore).toBe(0)
 		expect(state.progress.elementMastery).toEqual({ '6': 80 })
@@ -77,8 +77,50 @@ describe('storage foundation', () => {
 		expect(state.daily.currentStreak).toBe(0)
 		expect(state.daily.history).toEqual({})
 		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
-		expect(state.schemaVersion).toBe(5)
+		expect(state.schemaVersion).toBe(6)
 		expect(state.onboardingCompleted).toBe(true)
+	})
+
+	it('defaults hapticsEnabled true on fresh install', () => {
+		const state = createDefaultPersistedState()
+		expect(state.settings.hapticsEnabled).toBe(true)
+		expect(state.schemaVersion).toBe(6)
+	})
+
+	it('migrates v5 to v6 with hapticsEnabled true', () => {
+		const migrated = migratePersistedState({
+			schemaVersion: 5,
+			settings: {
+				soundEnabled: true,
+				hapticsEnabled: false,
+				reduceMotion: false,
+				locale: 'ru',
+			},
+			onboardingCompleted: true,
+			learningVisited: ['groups'],
+			achievements: { unlocked: {} },
+		})
+		expect(migrated.schemaVersion).toBe(6)
+		expect(migrated.settings.hapticsEnabled).toBe(true)
+		expect(migrated.onboardingCompleted).toBe(true)
+		expect(migrated.learningVisited).toEqual(['groups'])
+	})
+
+	it('sanitizes corrupt haptics setting safely', () => {
+		const state = migratePersistedState({
+			schemaVersion: 6,
+			settings: { hapticsEnabled: 'sometimes' },
+		})
+		expect(state.settings.hapticsEnabled).toBe(true)
+	})
+
+	it('persists haptics toggle through storage', async () => {
+		const memory = new MemoryStorage()
+		const initial = createDefaultPersistedState()
+		initial.settings.hapticsEnabled = false
+		await saveAppState(initial, memory)
+		const loaded = await loadAppState(memory)
+		expect(loaded.settings.hapticsEnabled).toBe(false)
 	})
 
 	it('round-trips through the storage abstraction', async () => {

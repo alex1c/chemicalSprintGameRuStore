@@ -13,7 +13,7 @@ import { theme } from '../theme'
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>
 
 /**
- * Light first-run (or manually reopened) 3-step onboarding.
+ * Light first-run (or manually reopened) 3-step onboarding with icon block + dots.
  */
 export function OnboardingScreen({ navigation, route }: Props) {
 	const manual = route.params?.manual === true
@@ -48,14 +48,23 @@ export function OnboardingScreen({ navigation, route }: Props) {
 					onPress={() => {
 						void finish()
 					}}
-					style={styles.skip}
+					style={({ pressed }) => [
+						styles.skip,
+						pressed ? styles.skipPressed : null,
+					]}
 				>
 					<Text style={styles.skipText}>ПРОПУСТИТЬ</Text>
 				</Pressable>
 			</View>
 
 			<View style={styles.content}>
-				<Text style={styles.emoji}>{step.emoji}</Text>
+				<View style={styles.iconBlock}>
+					<View style={styles.iconRing}>
+						<Text style={styles.emoji}>{step.emoji}</Text>
+					</View>
+					<View style={styles.orbitDot} />
+					<View style={[styles.orbitDot, styles.orbitDotAlt]} />
+				</View>
 				<Text style={styles.title}>{step.titleRu}</Text>
 				<Text style={styles.body}>{step.bodyRu}</Text>
 			</View>
@@ -92,6 +101,9 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		paddingHorizontal: theme.spacing.sm,
 	},
+	skipPressed: {
+		opacity: 0.7,
+	},
 	skipText: {
 		...theme.typography.caption,
 		color: theme.colors.textSecondary,
@@ -103,9 +115,44 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		paddingHorizontal: theme.spacing.md,
 	},
-	emoji: {
-		fontSize: 56,
+	iconBlock: {
+		width: 140,
+		height: 140,
+		alignItems: 'center',
+		justifyContent: 'center',
 		marginBottom: theme.spacing.lg,
+	},
+	iconRing: {
+		width: 112,
+		height: 112,
+		borderRadius: 56,
+		backgroundColor: theme.colors.surfaceElevated,
+		borderWidth: 2,
+		borderColor: theme.colors.brandSoft,
+		alignItems: 'center',
+		justifyContent: 'center',
+	},
+	orbitDot: {
+		position: 'absolute',
+		top: 8,
+		right: 18,
+		width: 12,
+		height: 12,
+		borderRadius: 6,
+		backgroundColor: theme.colors.accent,
+	},
+	orbitDotAlt: {
+		top: undefined,
+		right: undefined,
+		bottom: 14,
+		left: 16,
+		backgroundColor: theme.colors.success,
+		width: 8,
+		height: 8,
+		borderRadius: 4,
+	},
+	emoji: {
+		fontSize: 48,
 	},
 	title: {
 		...theme.typography.display,
@@ -122,13 +169,13 @@ const styles = StyleSheet.create({
 	dots: {
 		flexDirection: 'row',
 		justifyContent: 'center',
-		gap: theme.spacing.xs,
+		gap: theme.spacing.sm,
 		marginBottom: theme.spacing.lg,
 	},
 	dot: {
 		width: 8,
 		height: 8,
-		borderRadius: theme.radius.pill,
+		borderRadius: 4,
 		backgroundColor: theme.colors.border,
 	},
 	dotActive: {

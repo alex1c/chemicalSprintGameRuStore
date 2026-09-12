@@ -66,9 +66,8 @@ export function ElementDetailScreen({ navigation, route }: Props) {
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 			>
-				<Text style={styles.hero}>
-					{element.atomicNumber} {element.symbol}
-				</Text>
+				<Text style={styles.symbol}>{element.symbol}</Text>
+				<Text style={styles.heroNumber}>№ {element.atomicNumber}</Text>
 				<Text style={styles.name}>{element.nameRu}</Text>
 
 				<View style={styles.card}>
@@ -145,14 +144,22 @@ const styles = StyleSheet.create({
 		paddingBottom: theme.spacing.xxl,
 		gap: theme.spacing.sm,
 	},
-	hero: {
-		...theme.typography.display,
+	symbol: {
+		fontSize: 64,
+		lineHeight: 72,
+		fontWeight: '800',
 		color: theme.colors.brand,
+	},
+	heroNumber: {
+		...theme.typography.caption,
+		color: theme.colors.textSecondary,
+		fontWeight: '700',
 	},
 	name: {
 		...theme.typography.title,
 		color: theme.colors.textPrimary,
 		marginBottom: theme.spacing.sm,
+		flexShrink: 1,
 	},
 	section: {
 		...theme.typography.subtitle,
@@ -160,7 +167,7 @@ const styles = StyleSheet.create({
 		marginTop: theme.spacing.sm,
 	},
 	card: {
-		backgroundColor: theme.colors.surface,
+		backgroundColor: theme.colors.surfaceElevated,
 		borderRadius: theme.radius.lg,
 		borderWidth: 1,
 		borderColor: theme.colors.border,
@@ -190,7 +197,7 @@ const styles = StyleSheet.create({
 	},
 	reviewHint: {
 		...theme.typography.body,
-		color: theme.colors.accent,
+		color: theme.colors.warning,
 		marginBottom: theme.spacing.sm,
 	},
 	body: {

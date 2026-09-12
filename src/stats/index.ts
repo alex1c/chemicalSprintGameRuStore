@@ -20,6 +20,8 @@ export {
 	loadAchievementsState,
 	loadOnboardingCompleted,
 	setOnboardingCompleted,
+	loadAppSettings,
+	updateAppSettings,
 	loadLearningVisited,
 	markLearningArticleVisited,
 	syncAchievementsFromState,

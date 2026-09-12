@@ -78,7 +78,7 @@ export function HomeScreen({ navigation }: Props) {
 	return (
 		<Screen>
 			<View style={styles.balanceRow}>
-				<AtomBalanceChip balance={ready ? atomBalance : 0} />
+				<AtomBalanceChip balance={atomBalance} ready={ready} />
 			</View>
 
 			<View style={styles.hero}>
@@ -120,6 +120,7 @@ export function HomeScreen({ navigation }: Props) {
 				onPress={startDaily}
 				style={({ pressed }) => [
 					styles.dailyCard,
+					todayDaily.completed ? styles.dailyCardDone : null,
 					pressed ? styles.dailyCardPressed : null,
 				]}
 			>
@@ -137,13 +138,22 @@ export function HomeScreen({ navigation }: Props) {
 							<Text style={styles.dailyMeta}>
 								🔥 Серия: {todayDaily.currentStreak} дней
 							</Text>
-							<Text style={styles.dailyCta}>ПОВТОРИТЬ</Text>
+							<Text style={styles.dailyCtaSecondary}>ПОВТОРИТЬ</Text>
 						</>
 					) : (
 						<>
 							<Text style={styles.dailyMeta}>
 								10 вопросов · бонус +{DAILY_COMPLETION_BONUS} ⚛
 							</Text>
+							{todayDaily.currentStreak > 0 ? (
+								<Text style={styles.dailyMeta}>
+									🔥 Серия: {todayDaily.currentStreak} дней
+								</Text>
+							) : (
+								<Text style={styles.dailyMeta}>
+									Первый спринт дня — лови бонус
+								</Text>
+							)}
 							<Text style={styles.dailyCta}>ИГРАТЬ</Text>
 						</>
 					)}
@@ -292,8 +302,13 @@ const styles = StyleSheet.create({
 		minHeight: MIN_TOUCH_TARGET + 16,
 		alignItems: 'center',
 	},
+	dailyCardDone: {
+		backgroundColor: theme.colors.surfaceElevated,
+		borderColor: theme.colors.success,
+	},
 	dailyCardPressed: {
 		opacity: 0.9,
+		backgroundColor: theme.colors.surfaceMuted,
 	},
 	dailyIcon: {
 		fontSize: 28,
@@ -313,6 +328,12 @@ const styles = StyleSheet.create({
 	dailyCta: {
 		...theme.typography.caption,
 		color: theme.colors.accent,
+		fontWeight: '700',
+		marginTop: theme.spacing.xxs,
+	},
+	dailyCtaSecondary: {
+		...theme.typography.caption,
+		color: theme.colors.brandSoft,
 		fontWeight: '700',
 		marginTop: theme.spacing.xxs,
 	},

@@ -299,7 +299,6 @@ describe('schema v4 daily migration', () => {
 			},
 		})
 		expect(migrated.schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
-		expect(migrated.schemaVersion).toBe(5)
 		expect(migrated.atoms.balance).toBe(42)
 		expect(migrated.elementStats['26']?.wrong).toBe(1)
 		expect(migrated.modeStats.CLASSIC.bestScore).toBe(100)

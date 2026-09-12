@@ -247,25 +247,27 @@ function BreakdownChip({
 const masteryStyles = StyleSheet.create({
 	UNSEEN: {
 		borderStyle: 'dashed',
-		opacity: 0.72,
+		borderColor: theme.colors.masteryUnseen,
+		backgroundColor: theme.colors.surfaceElevated,
+		opacity: 0.85,
 	},
 	LEARNING: {
-		borderColor: theme.colors.accent,
-		backgroundColor: theme.colors.accentSoft,
+		borderColor: theme.colors.masteryLearning,
+		backgroundColor: theme.colors.warningSoft,
 	},
 	FAMILIAR: {
-		borderColor: theme.colors.brandSoft,
-		backgroundColor: theme.colors.surfaceMuted,
+		borderColor: theme.colors.masteryFamiliar,
+		backgroundColor: theme.colors.infoSoft,
 	},
 	MASTERED: {
-		borderColor: theme.colors.success,
+		borderColor: theme.colors.masteryMastered,
 		backgroundColor: theme.colors.successSoft,
 	},
 })
 
 const styles = StyleSheet.create({
 	summaryCard: {
-		backgroundColor: theme.colors.surface,
+		backgroundColor: theme.colors.surfaceElevated,
 		borderRadius: theme.radius.lg,
 		borderWidth: 1,
 		borderColor: theme.colors.border,
@@ -383,7 +385,7 @@ const styles = StyleSheet.create({
 		flex: 1,
 		aspectRatio: 1,
 		maxWidth: '24%',
-		borderRadius: theme.radius.md,
+		borderRadius: theme.radius.lg,
 		borderWidth: 1.5,
 		borderColor: theme.colors.border,
 		backgroundColor: theme.colors.surface,
@@ -406,11 +408,14 @@ const styles = StyleSheet.create({
 	tileSymbol: {
 		...theme.typography.subtitle,
 		color: theme.colors.textPrimary,
+		fontWeight: '700',
 	},
 	empty: {
 		...theme.typography.body,
 		color: theme.colors.textSecondary,
 		textAlign: 'center',
 		marginTop: theme.spacing.xl,
+		paddingHorizontal: theme.spacing.lg,
+		lineHeight: 22,
 	},
 })

@@ -555,6 +555,35 @@ export async function loadOnboardingCompleted(
 	}
 }
 
+/**
+ * Load app settings (haptics, sound placeholders, reduceMotion flag).
+ */
+export async function loadAppSettings(storage?: KeyValueStorage) {
+	try {
+		const state = await loadAppState(storage)
+		return state.settings
+	} catch {
+		return createDefaultPersistedState().settings
+	}
+}
+
+/**
+ * Persist a partial settings patch without resetting other fields.
+ */
+export async function updateAppSettings(
+	patch: Partial<PersistedAppState['settings']>,
+	storage?: KeyValueStorage,
+): Promise<PersistedAppState['settings']> {
+	const current = await loadAppState(storage)
+	const settings = {
+		...current.settings,
+		...patch,
+		locale: 'ru' as const,
+	}
+	await saveAppState({ ...current, settings }, storage)
+	return settings
+}
+
 export async function setOnboardingCompleted(
 	completed: boolean,
 	storage?: KeyValueStorage,

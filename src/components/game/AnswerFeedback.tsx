@@ -59,8 +59,9 @@ export function AnswerFeedback({
 
 			{saveStreakAvailable && !saveStreakUsed ? (
 				<View style={styles.saveBlock}>
+					<Text style={styles.saveOpportunity}>Сохранить серию?</Text>
 					<Text style={styles.saveLabel}>
-						Серия: {streakBeforeWrong}
+						Серия: {streakBeforeWrong} · не упусти возможность
 					</Text>
 					<Pressable
 						accessibilityRole="button"
@@ -68,9 +69,12 @@ export function AnswerFeedback({
 						accessibilityState={{ disabled: !canAffordSaveStreak }}
 						disabled={!canAffordSaveStreak}
 						onPress={onSaveStreak}
-						style={[
+						style={({ pressed }) => [
 							styles.saveButton,
 							!canAffordSaveStreak ? styles.saveDisabled : null,
+							pressed && canAffordSaveStreak
+								? styles.savePressed
+								: null,
 						]}
 					>
 						<Text style={styles.saveButtonText}>
@@ -94,12 +98,12 @@ const styles = StyleSheet.create({
 		borderColor: theme.colors.success,
 	},
 	panelWrong: {
-		backgroundColor: theme.colors.dangerSoft,
-		borderColor: theme.colors.danger,
+		backgroundColor: theme.colors.errorSoft,
+		borderColor: theme.colors.error,
 	},
 	panelRetry: {
-		backgroundColor: theme.colors.accentSoft,
-		borderColor: theme.colors.accent,
+		backgroundColor: theme.colors.warningSoft,
+		borderColor: theme.colors.warning,
 	},
 	title: {
 		...theme.typography.subtitle,
@@ -119,6 +123,17 @@ const styles = StyleSheet.create({
 	saveBlock: {
 		marginTop: theme.spacing.md,
 		gap: theme.spacing.xs,
+		padding: theme.spacing.sm,
+		borderRadius: theme.radius.md,
+		backgroundColor: theme.colors.warningSoft,
+		borderWidth: 1.5,
+		borderColor: theme.colors.warning,
+	},
+	saveOpportunity: {
+		...theme.typography.subtitle,
+		fontSize: 15,
+		color: theme.colors.warning,
+		fontWeight: '700',
 	},
 	saveLabel: {
 		...theme.typography.body,
@@ -133,8 +148,12 @@ const styles = StyleSheet.create({
 		justifyContent: 'center',
 		paddingHorizontal: theme.spacing.md,
 	},
+	savePressed: {
+		backgroundColor: theme.colors.brandSoft,
+	},
 	saveDisabled: {
 		opacity: 0.45,
+		backgroundColor: theme.colors.disabled,
 	},
 	saveButtonText: {
 		...theme.typography.button,

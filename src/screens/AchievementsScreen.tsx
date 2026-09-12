@@ -114,8 +114,11 @@ export function AchievementsScreen(_props: Props) {
 								<Text style={styles.desc}>{item.descriptionRu}</Text>
 								{progress && !unlocked ? (
 									<Text style={styles.progress}>
-										{progress.current} / {progress.target}
+										Прогресс: {progress.current} / {progress.target}
 									</Text>
+								) : null}
+								{unlocked ? (
+									<Text style={styles.progressComplete}>Готово</Text>
 								) : null}
 								{unlocked && unlock ? (
 									<Text style={styles.date}>
@@ -164,11 +167,12 @@ const styles = StyleSheet.create({
 	cardUnlocked: {
 		backgroundColor: theme.colors.successSoft,
 		borderColor: theme.colors.success,
+		...theme.shadows.card,
 	},
 	cardLocked: {
-		backgroundColor: theme.colors.surface,
+		backgroundColor: theme.colors.surfaceElevated,
 		borderColor: theme.colors.border,
-		opacity: 0.92,
+		opacity: 1,
 	},
 	icon: {
 		fontSize: 28,
@@ -177,6 +181,7 @@ const styles = StyleSheet.create({
 	body: {
 		flex: 1,
 		gap: 2,
+		minWidth: 0,
 	},
 	category: {
 		...theme.typography.caption,
@@ -189,6 +194,7 @@ const styles = StyleSheet.create({
 	desc: {
 		...theme.typography.body,
 		color: theme.colors.textSecondary,
+		lineHeight: 20,
 	},
 	progress: {
 		...theme.typography.caption,
@@ -196,9 +202,16 @@ const styles = StyleSheet.create({
 		fontWeight: '700',
 		marginTop: theme.spacing.xxs,
 	},
+	progressComplete: {
+		...theme.typography.caption,
+		color: theme.colors.success,
+		fontWeight: '700',
+		marginTop: theme.spacing.xxs,
+	},
 	date: {
 		...theme.typography.caption,
 		color: theme.colors.success,
 		marginTop: theme.spacing.xxs,
+		fontWeight: '600',
 	},
 })

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Animated, StyleSheet, Text, View } from 'react-native'
-import { theme } from '../../theme'
+import { useReducedMotion } from '../../hooks/useReducedMotion'
+import { isStreakMilestone, theme } from '../../theme'
 
 interface GameHudProps {
 	questionNumber: number
@@ -11,7 +12,7 @@ interface GameHudProps {
 }
 
 /**
- * Compact top HUD: progress index, streak, and score.
+ * Compact top HUD: progress index, streak pulse, and score with float delta.
  */
 export function GameHud({
 	questionNumber,
@@ -20,26 +21,70 @@ export function GameHud({
 	score,
 	scoreDelta = 0,
 }: GameHudProps) {
+	const reduceMotion = useReducedMotion()
 	const streakScale = useRef(new Animated.Value(1)).current
+	const deltaOpacity = useRef(new Animated.Value(0)).current
+	const deltaTranslate = useRef(new Animated.Value(0)).current
 
 	useEffect(() => {
-		if (streak <= 0) {
+		if (streak <= 0 || reduceMotion) {
 			return
 		}
+		const milestone = isStreakMilestone(streak)
+		const out = milestone
+			? theme.motion.streakMilestoneOut
+			: theme.motion.streakPulseOut
+		const back = milestone
+			? theme.motion.streakMilestoneIn
+			: theme.motion.streakPulseIn
+		const peak = milestone ? 1.28 : 1.16
+
 		streakScale.setValue(1)
 		Animated.sequence([
 			Animated.timing(streakScale, {
-				toValue: 1.18,
-				duration: 120,
+				toValue: peak,
+				duration: out,
 				useNativeDriver: true,
 			}),
 			Animated.timing(streakScale, {
 				toValue: 1,
-				duration: 140,
+				duration: back,
 				useNativeDriver: true,
 			}),
 		]).start()
-	}, [streak, streakScale])
+	}, [streak, reduceMotion, streakScale])
+
+	useEffect(() => {
+		deltaOpacity.stopAnimation()
+		deltaTranslate.stopAnimation()
+
+		if (scoreDelta <= 0) {
+			deltaOpacity.setValue(0)
+			deltaTranslate.setValue(0)
+			return
+		}
+
+		if (reduceMotion) {
+			deltaOpacity.setValue(1)
+			deltaTranslate.setValue(0)
+			return
+		}
+
+		deltaOpacity.setValue(0)
+		deltaTranslate.setValue(8)
+		Animated.parallel([
+			Animated.timing(deltaOpacity, {
+				toValue: 1,
+				duration: theme.motion.fast,
+				useNativeDriver: true,
+			}),
+			Animated.timing(deltaTranslate, {
+				toValue: -6,
+				duration: theme.motion.scoreFloatDuration,
+				useNativeDriver: true,
+			}),
+		]).start()
+	}, [scoreDelta, reduceMotion, deltaOpacity, deltaTranslate])
 
 	return (
 		<View style={styles.row}>
@@ -47,14 +92,28 @@ export function GameHud({
 				{questionNumber} / {questionCount}
 			</Text>
 			<Animated.Text
-				style={[styles.item, styles.streak, { transform: [{ scale: streakScale }] }]}
+				style={[
+					styles.item,
+					styles.streak,
+					{ transform: [{ scale: streakScale }] },
+				]}
 			>
 				🔥 {streak}
 			</Animated.Text>
 			<View style={styles.scoreBlock}>
 				<Text style={styles.item}>Очки: {score}</Text>
 				{scoreDelta > 0 ? (
-					<Text style={styles.delta}>+{scoreDelta}</Text>
+					<Animated.Text
+						style={[
+							styles.delta,
+							{
+								opacity: deltaOpacity,
+								transform: [{ translateY: deltaTranslate }],
+							},
+						]}
+					>
+						+{scoreDelta}
+					</Animated.Text>
 				) : null}
 			</View>
 		</View>
@@ -67,6 +126,7 @@ const styles = StyleSheet.create({
 		alignItems: 'center',
 		justifyContent: 'space-between',
 		gap: theme.spacing.sm,
+		flex: 1,
 	},
 	item: {
 		...theme.typography.subtitle,
@@ -78,6 +138,7 @@ const styles = StyleSheet.create({
 	},
 	scoreBlock: {
 		alignItems: 'flex-end',
+		minWidth: 72,
 	},
 	delta: {
 		...theme.typography.caption,
