@@ -73,11 +73,12 @@ describe('storage foundation', () => {
 			'MIXED',
 			'WEAK_ELEMENTS',
 		])
-		expect(state.achievements.unlockedIds).toEqual([])
+		expect(state.achievements.unlocked).toEqual({})
 		expect(state.daily.currentStreak).toBe(0)
 		expect(state.daily.history).toEqual({})
 		expect(state.atoms.balance).toBe(ATOM_ECONOMY_CONFIG.startingAtoms)
-		expect(state.schemaVersion).toBe(4)
+		expect(state.schemaVersion).toBe(5)
+		expect(state.onboardingCompleted).toBe(true)
 	})
 
 	it('round-trips through the storage abstraction', async () => {

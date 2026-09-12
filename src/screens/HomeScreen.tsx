@@ -176,7 +176,20 @@ export function HomeScreen({ navigation }: Props) {
 					label="Обучение"
 					onPress={() => navigation.navigate(ROUTES.Learn)}
 				/>
+				<SecondaryLink
+					label="Достижения"
+					onPress={() => navigation.navigate(ROUTES.Achievements)}
+				/>
 			</View>
+
+			<Pressable
+				accessibilityRole="button"
+				accessibilityLabel="Настройки"
+				onPress={() => navigation.navigate(ROUTES.Settings)}
+				style={styles.settingsButton}
+			>
+				<Text style={styles.settingsText}>⚙ Настройки</Text>
+			</Pressable>
 		</Screen>
 	)
 }
@@ -319,6 +332,18 @@ const styles = StyleSheet.create({
 	secondaryText: {
 		...theme.typography.body,
 		color: theme.colors.brandSoft,
+		fontWeight: '600',
+	},
+	settingsButton: {
+		marginTop: theme.spacing.md,
+		alignSelf: 'center',
+		minHeight: MIN_TOUCH_TARGET,
+		justifyContent: 'center',
+		paddingHorizontal: theme.spacing.md,
+	},
+	settingsText: {
+		...theme.typography.caption,
+		color: theme.colors.textSecondary,
 		fontWeight: '600',
 	},
 })

@@ -3,6 +3,10 @@
  * Keep React components free of raw storage access.
  */
 
+import {
+	createEmptyAchievementsState,
+	type AchievementsPersistedState,
+} from '../achievements'
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
 import {
 	createEmptyDailyState,
@@ -14,7 +18,7 @@ import {
 	type ModeStatsMap,
 } from '../modes'
 
-export const STORAGE_SCHEMA_VERSION = 4 as const
+export const STORAGE_SCHEMA_VERSION = 5 as const
 
 export interface AppSettings {
 	soundEnabled: boolean
@@ -65,9 +69,8 @@ export interface AtomsWallet {
 
 export type DailyState = DailyStateV4
 
-export interface AchievementsState {
-	unlockedIds: string[]
-}
+/** Achievement unlock map with timestamps. */
+export type AchievementsState = AchievementsPersistedState
 
 /**
  * Root persisted document. Always includes schemaVersion for migrations.
@@ -86,6 +89,10 @@ export interface PersistedAppState {
 	modeStats: ModeStatsMap
 	/** Completed session ids make reward/stat commits durable and idempotent. */
 	completedSessionIds: string[]
+	/** First-run onboarding finished or skipped. */
+	onboardingCompleted: boolean
+	/** Learning article ids the user has opened. */
+	learningVisited: string[]
 	updatedAt: string
 }
 
@@ -136,9 +143,8 @@ export const DEFAULT_ATOMS: AtomsWallet = {
 	startingGranted: true,
 }
 
-export const DEFAULT_ACHIEVEMENTS: AchievementsState = {
-	unlockedIds: [],
-}
+export const DEFAULT_ACHIEVEMENTS: AchievementsState =
+	createEmptyAchievementsState()
 
 export const DEFAULT_DAILY: DailyState = createEmptyDailyState()
 
@@ -157,11 +163,13 @@ export function createDefaultPersistedState(
 			unlockedModes: [...DEFAULT_PROGRESS.unlockedModes],
 		},
 		atoms: { ...DEFAULT_ATOMS },
-		achievements: { unlockedIds: [] },
+		achievements: createEmptyAchievementsState(),
 		daily: { ...DEFAULT_DAILY },
 		elementStats: {},
 		modeStats: createDefaultModeStatsMap(),
 		completedSessionIds: [],
+		onboardingCompleted: false,
+		learningVisited: [],
 		updatedAt: now().toISOString(),
 	}
 }

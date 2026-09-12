@@ -321,14 +321,15 @@ describe('schema migration to v4', () => {
 		expect(state.elementStats['11']!.wrong).toBe(2)
 		expect(state.elementStats.bad).toBeUndefined()
 		expect(state.elementStats['999']).toBeUndefined()
-		expect(state.schemaVersion).toBe(4)
+		expect(state.schemaVersion).toBe(5)
 	})
 
-	it('fresh defaults are schema v4', () => {
+	it('fresh defaults are schema v5', () => {
 		const fresh = createDefaultPersistedState()
-		expect(fresh.schemaVersion).toBe(4)
+		expect(fresh.schemaVersion).toBe(5)
 		expect(fresh.modeStats.MIXED.bestScore).toBe(0)
 		expect(fresh.daily.currentStreak).toBe(0)
+		expect(fresh.onboardingCompleted).toBe(false)
 	})
 })
 

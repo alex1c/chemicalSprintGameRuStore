@@ -1,4 +1,5 @@
 import { ATOM_ECONOMY_CONFIG } from '../economy/config'
+import { sanitizeAchievementsState } from '../achievements'
 import { sanitizeDailyState } from '../daily'
 import {
 	createDefaultModeStatsMap,
@@ -107,6 +108,17 @@ export const MIGRATIONS: Record<number, Migration> = {
 			history: {},
 		},
 	}),
+	/**
+	 * v5: achievements timestamps, onboarding flag, learning visited.
+	 * Existing installs skip first-run onboarding.
+	 */
+	5: (raw) => ({
+		...raw,
+		schemaVersion: 5,
+		onboardingCompleted: true,
+		learningVisited: [],
+		achievements: { unlocked: {} },
+	}),
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -194,7 +206,6 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 	const statistics = isRecord(doc.statistics) ? doc.statistics : {}
 	const progress = isRecord(doc.progress) ? doc.progress : {}
 	const atoms = isRecord(doc.atoms) ? doc.atoms : {}
-	const achievements = isRecord(doc.achievements) ? doc.achievements : {}
 	const completedSessionIds = stringArrayOr(doc.completedSessionIds, [])
 
 	const sanitizedAtomsBalance = nonNegativeNumberOr(
@@ -303,16 +314,19 @@ export function migratePersistedState(raw: unknown): PersistedAppState {
 			lifetimeSpent: sanitizedLifetimeSpent,
 			startingGranted,
 		},
-		achievements: {
-			unlockedIds: stringArrayOr(
-				achievements.unlockedIds,
-				defaults.achievements.unlockedIds,
-			),
-		},
+		achievements: sanitizeAchievementsState(doc.achievements),
 		daily: sanitizeDailyState(doc.daily),
 		elementStats: sanitizeElementStats(doc.elementStats),
 		modeStats: sanitizeModeStats(doc.modeStats),
 		completedSessionIds,
+		onboardingCompleted: booleanOr(
+			doc.onboardingCompleted,
+			defaults.onboardingCompleted,
+		),
+		learningVisited: stringArrayOr(
+			doc.learningVisited,
+			defaults.learningVisited,
+		),
 		updatedAt:
 			typeof doc.updatedAt === 'string' ? doc.updatedAt : defaults.updatedAt,
 	}

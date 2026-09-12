@@ -80,6 +80,7 @@ function ModeGamePlay({
 				dailyStreakGrew: result.dailyStreakGrew,
 				dailyNewStreakStarted: result.dailyNewStreakStarted,
 				isDailyReplay: result.isDailyReplay,
+				newlyUnlockedAchievementIds: result.newlyUnlockedAchievementIds,
 			})
 		},
 		[navigation, focusAtomicNumber, dailyDateKey],

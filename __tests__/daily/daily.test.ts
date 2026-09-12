@@ -299,7 +299,7 @@ describe('schema v4 daily migration', () => {
 			},
 		})
 		expect(migrated.schemaVersion).toBe(STORAGE_SCHEMA_VERSION)
-		expect(migrated.schemaVersion).toBe(4)
+		expect(migrated.schemaVersion).toBe(5)
 		expect(migrated.atoms.balance).toBe(42)
 		expect(migrated.elementStats['26']?.wrong).toBe(1)
 		expect(migrated.modeStats.CLASSIC.bestScore).toBe(100)
@@ -307,6 +307,7 @@ describe('schema v4 daily migration', () => {
 		expect(migrated.daily.bestStreak).toBe(0)
 		expect(migrated.daily.lastCompletedDateKey).toBeNull()
 		expect(migrated.daily.history).toEqual({})
+		expect(migrated.onboardingCompleted).toBe(true)
 	})
 
 	it('sanitizes corrupt daily history', () => {

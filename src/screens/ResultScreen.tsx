@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { PrimaryButton } from '../components/PrimaryButton'
 import { Screen } from '../components/Screen'
 import { ROUTES } from '../constants/routes'
+import { ACHIEVEMENT_BY_ID } from '../achievements'
 import { getElementByAtomicNumber } from '../data/chemistry'
 import { getGameModeConfig } from '../modes'
 import type { RootStackParamList } from '../navigation/types'
@@ -76,6 +77,7 @@ export function ResultScreen({ navigation, route }: Props) {
 		dailyStreakGrew,
 		dailyNewStreakStarted,
 		isDailyReplay,
+		newlyUnlockedAchievementIds = [],
 	} = route.params
 
 	const mode = getGameModeConfig(modeId)
@@ -151,6 +153,40 @@ export function ResultScreen({ navigation, route }: Props) {
 					<Text style={styles.replayNote}>
 						Повтор без начисления атомов
 					</Text>
+				) : null}
+
+				{newlyUnlockedAchievementIds.length === 1 ? (
+					<View style={styles.achievementBanner}>
+						<Text style={styles.achievementTitle}>
+							🏆 Новое достижение
+						</Text>
+						<Text style={styles.achievementName}>
+							{ACHIEVEMENT_BY_ID[newlyUnlockedAchievementIds[0]!]
+								?.titleRu ?? newlyUnlockedAchievementIds[0]}
+						</Text>
+						<Text style={styles.achievementDesc}>
+							{ACHIEVEMENT_BY_ID[newlyUnlockedAchievementIds[0]!]
+								?.descriptionRu ?? ''}
+						</Text>
+					</View>
+				) : null}
+				{newlyUnlockedAchievementIds.length > 1 ? (
+					<View style={styles.achievementBanner}>
+						<Text style={styles.achievementTitle}>
+							🏆 {newlyUnlockedAchievementIds.length} новых достижения
+						</Text>
+						{newlyUnlockedAchievementIds.slice(0, 3).map((id) => (
+							<Text key={id} style={styles.achievementName}>
+								{ACHIEVEMENT_BY_ID[id]?.titleRu ?? id}
+							</Text>
+						))}
+						<PrimaryButton
+							label="СМОТРЕТЬ ДОСТИЖЕНИЯ"
+							variant="secondary"
+							accessibilityLabel="Открыть экран достижений"
+							onPress={() => navigation.navigate(ROUTES.Achievements)}
+						/>
+					</View>
 				) : null}
 
 				<View style={styles.atomsBlock}>
@@ -321,6 +357,29 @@ const styles = StyleSheet.create({
 		...theme.typography.caption,
 		color: theme.colors.textSecondary,
 		marginTop: theme.spacing.xs,
+	},
+	achievementBanner: {
+		marginTop: theme.spacing.lg,
+		width: '100%',
+		backgroundColor: theme.colors.successSoft,
+		borderRadius: theme.radius.lg,
+		borderWidth: 1,
+		borderColor: theme.colors.success,
+		padding: theme.spacing.md,
+		gap: theme.spacing.xxs,
+	},
+	achievementTitle: {
+		...theme.typography.subtitle,
+		color: theme.colors.success,
+	},
+	achievementName: {
+		...theme.typography.body,
+		color: theme.colors.textPrimary,
+		fontWeight: '700',
+	},
+	achievementDesc: {
+		...theme.typography.caption,
+		color: theme.colors.textSecondary,
 	},
 	atomsBlock: {
 		marginTop: theme.spacing.lg,

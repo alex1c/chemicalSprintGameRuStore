@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { ActivityIndicator, StyleSheet, View } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { ROUTES } from '../constants/routes'
@@ -6,23 +8,53 @@ import { ElementDetailScreen } from '../screens/ElementDetailScreen'
 import { GameScreen } from '../screens/GameScreen'
 import { HomeScreen } from '../screens/HomeScreen'
 import { LearnScreen } from '../screens/LearnScreen'
+import { LearningArticleScreen } from '../screens/LearningArticleScreen'
 import { ModesScreen } from '../screens/ModesScreen'
+import { OnboardingScreen } from '../screens/OnboardingScreen'
 import { ProgressScreen } from '../screens/ProgressScreen'
 import { ResultScreen } from '../screens/ResultScreen'
 import { SettingsScreen } from '../screens/SettingsScreen'
+import { loadOnboardingCompleted } from '../stats'
 import { theme } from '../theme'
 import type { RootStackParamList } from './types'
 
 const Stack = createNativeStackNavigator<RootStackParamList>()
 
 /**
- * Root navigator with all planned routes registered for incremental UI work.
+ * Root navigator with first-run onboarding gate.
  */
 export function RootNavigator() {
+	const [ready, setReady] = useState(false)
+	const [showOnboarding, setShowOnboarding] = useState(false)
+
+	useEffect(() => {
+		let mounted = true
+		void loadOnboardingCompleted().then((completed) => {
+			if (!mounted) {
+				return
+			}
+			setShowOnboarding(!completed)
+			setReady(true)
+		})
+		return () => {
+			mounted = false
+		}
+	}, [])
+
+	if (!ready) {
+		return (
+			<View style={styles.boot}>
+				<ActivityIndicator color={theme.colors.brand} />
+			</View>
+		)
+	}
+
 	return (
 		<NavigationContainer>
 			<Stack.Navigator
-				initialRouteName={ROUTES.Home}
+				initialRouteName={
+					showOnboarding ? ROUTES.Onboarding : ROUTES.Home
+				}
 				screenOptions={{
 					headerStyle: { backgroundColor: theme.colors.background },
 					headerTintColor: theme.colors.brand,
@@ -33,6 +65,11 @@ export function RootNavigator() {
 					contentStyle: { backgroundColor: theme.colors.background },
 				}}
 			>
+				<Stack.Screen
+					name={ROUTES.Onboarding}
+					component={OnboardingScreen}
+					options={{ headerShown: false }}
+				/>
 				<Stack.Screen
 					name={ROUTES.Home}
 					component={HomeScreen}
@@ -72,6 +109,11 @@ export function RootNavigator() {
 					options={{ title: 'Обучение' }}
 				/>
 				<Stack.Screen
+					name={ROUTES.LearningArticle}
+					component={LearningArticleScreen}
+					options={{ title: 'Статья', headerBackTitle: 'Назад' }}
+				/>
+				<Stack.Screen
 					name={ROUTES.Achievements}
 					component={AchievementsScreen}
 					options={{ title: 'Достижения' }}
@@ -85,3 +127,12 @@ export function RootNavigator() {
 		</NavigationContainer>
 	)
 }
+
+const styles = StyleSheet.create({
+	boot: {
+		flex: 1,
+		alignItems: 'center',
+		justifyContent: 'center',
+		backgroundColor: theme.colors.background,
+	},
+})

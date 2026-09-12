@@ -1,4 +1,5 @@
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack'
+import type { AchievementId } from '../achievements'
 import { ROUTES } from '../constants/routes'
 import type { AtomRewardBreakdown } from '../economy'
 import type { GameModeId } from '../modes'
@@ -22,9 +23,7 @@ export type ResultScreenParams = {
 	atomBalance: number
 	rewardBreakdown: AtomRewardBreakdown
 	endReason: string | null
-	/** Present for contextual single-element training. */
 	focusAtomicNumber?: number
-	/** Daily challenge date key bound at session start. */
 	dailyDateKey?: string
 	isDailyFirstCompletion?: boolean
 	dailyBonusGranted?: number
@@ -32,6 +31,7 @@ export type ResultScreenParams = {
 	dailyStreakGrew?: boolean
 	dailyNewStreakStarted?: boolean
 	isDailyReplay?: boolean
+	newlyUnlockedAchievementIds?: AchievementId[]
 }
 
 export type RootStackParamList = {
@@ -49,8 +49,10 @@ export type RootStackParamList = {
 	[ROUTES.Progress]: undefined
 	[ROUTES.ElementDetail]: { atomicNumber: number }
 	[ROUTES.Learn]: undefined
+	[ROUTES.LearningArticle]: { articleId: string }
 	[ROUTES.Achievements]: undefined
 	[ROUTES.Settings]: undefined
+	[ROUTES.Onboarding]: { manual?: boolean } | undefined
 }
 
 export type RootNavigation = NativeStackNavigationProp<RootStackParamList>

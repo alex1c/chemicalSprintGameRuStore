@@ -14,6 +14,10 @@ import {
 	isDailyCompleted,
 } from '../daily'
 import {
+	evaluateAchievements,
+	type AchievementId,
+} from '../achievements'
+import {
 	applyElementOutcome,
 	applyModeSessionToStats,
 	type ElementOutcome,
@@ -56,6 +60,8 @@ export interface PersistCompletedSessionResult extends AppliedSessionStats {
 	dailyStreakGrew: boolean
 	dailyNewStreakStarted: boolean
 	isDailyReplay: boolean
+	/** Achievements unlocked by this completion (may be empty). */
+	newlyUnlockedAchievementIds: AchievementId[]
 }
 
 const EMPTY_DAILY_META = {
@@ -192,6 +198,7 @@ async function persistCompletedSessionStatsUnlocked(
 				modeId === 'DAILY' &&
 				session.challengeDateKey != null &&
 				isDailyCompleted(current.daily, session.challengeDateKey),
+			newlyUnlockedAchievementIds: [],
 		}
 	}
 
@@ -215,6 +222,7 @@ async function persistCompletedSessionStatsUnlocked(
 				...EMPTY_DAILY_META,
 				dailyDateKey: session.challengeDateKey,
 				dailyCurrentStreak: current.daily.currentStreak,
+				newlyUnlockedAchievementIds: [],
 			}
 		}
 
@@ -358,18 +366,42 @@ async function persistCompletedSessionStatsUnlocked(
 					[modeId]: modeApplied.stats,
 				}
 
+		const nextElementStats = buildElementStatsUpdates(
+			session,
+			current.elementStats,
+		)
+		const nextStatistics = {
+			...applied.statistics,
+			totalAtomsEarned:
+				applied.statistics.totalAtomsEarned + breakdown.total,
+		}
+
+		const achievementEval = evaluateAchievements({
+			statistics: nextStatistics,
+			elementStats: nextElementStats,
+			modeStats: nextModeStats,
+			daily: nextDaily,
+			achievements: current.achievements,
+			event: {
+				type: 'SESSION_COMPLETED',
+				modeId,
+				correctCount: summary.correctCount,
+				wrongCount: summary.wrongCount,
+				questionCount: summary.questionCount,
+				bestStreak: summary.bestStreak,
+				atomsEarned: breakdown.total,
+			},
+		})
+
 		const nextState: PersistedAppState = {
 			...current,
 			completedSessionIds: [...current.completedSessionIds, session.id],
-			statistics: {
-				...applied.statistics,
-				totalAtomsEarned:
-					applied.statistics.totalAtomsEarned + breakdown.total,
-			},
+			statistics: nextStatistics,
 			atoms: toPersistedAtoms(earned.wallet),
-			elementStats: buildElementStatsUpdates(session, current.elementStats),
+			elementStats: nextElementStats,
 			modeStats: nextModeStats,
 			daily: nextDaily,
+			achievements: achievementEval.nextAchievements,
 		}
 		await saveAppState(nextState, storage)
 
@@ -391,6 +423,7 @@ async function persistCompletedSessionStatsUnlocked(
 					: modeApplied.isNewRecord,
 			endReason: session.endReason,
 			...dailyMeta,
+			newlyUnlockedAchievementIds: achievementEval.newlyUnlockedIds,
 		}
 	} catch {
 		const applied = applyCompletedSessionToStatistics(previous, summary)
@@ -420,6 +453,7 @@ async function persistCompletedSessionStatsUnlocked(
 			endReason: session.endReason,
 			...EMPTY_DAILY_META,
 			dailyDateKey: session.challengeDateKey,
+			newlyUnlockedAchievementIds: [],
 		}
 	}
 }
@@ -499,4 +533,83 @@ export async function loadDailyState(storage?: KeyValueStorage) {
 	} catch {
 		return createDefaultPersistedState().daily
 	}
+}
+
+export async function loadAchievementsState(storage?: KeyValueStorage) {
+	try {
+		const state = await loadAppState(storage)
+		return state.achievements
+	} catch {
+		return createDefaultPersistedState().achievements
+	}
+}
+
+export async function loadOnboardingCompleted(
+	storage?: KeyValueStorage,
+): Promise<boolean> {
+	try {
+		const state = await loadAppState(storage)
+		return state.onboardingCompleted
+	} catch {
+		return false
+	}
+}
+
+export async function setOnboardingCompleted(
+	completed: boolean,
+	storage?: KeyValueStorage,
+): Promise<void> {
+	const current = await loadAppState(storage)
+	await saveAppState(
+		{ ...current, onboardingCompleted: completed },
+		storage,
+	)
+}
+
+export async function loadLearningVisited(
+	storage?: KeyValueStorage,
+): Promise<string[]> {
+	try {
+		const state = await loadAppState(storage)
+		return state.learningVisited
+	} catch {
+		return []
+	}
+}
+
+export async function markLearningArticleVisited(
+	articleId: string,
+	storage?: KeyValueStorage,
+): Promise<string[]> {
+	const current = await loadAppState(storage)
+	if (current.learningVisited.includes(articleId)) {
+		return current.learningVisited
+	}
+	const learningVisited = [...current.learningVisited, articleId]
+	await saveAppState({ ...current, learningVisited }, storage)
+	return learningVisited
+}
+
+/**
+ * Re-evaluate achievements from current persisted state (backfill / screen open).
+ */
+export async function syncAchievementsFromState(
+	storage?: KeyValueStorage,
+): Promise<{ newlyUnlockedIds: AchievementId[] }> {
+	const current = await loadAppState(storage)
+	const evaluated = evaluateAchievements({
+		statistics: current.statistics,
+		elementStats: current.elementStats,
+		modeStats: current.modeStats,
+		daily: current.daily,
+		achievements: current.achievements,
+	})
+	if (evaluated.newlyUnlockedIds.length === 0) {
+		return { newlyUnlockedIds: [] }
+	}
+	await saveAppState(
+		{ ...current, achievements: evaluated.nextAchievements },
+		storage,
+	)
+	return { newlyUnlockedIds: evaluated.newlyUnlockedIds }
 }
