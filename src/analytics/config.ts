@@ -1,22 +1,22 @@
 /**
- * Analytics configuration boundary.
- * Production AppMetrica API key is NOT present yet — do not invent one.
+ * Analytics configuration — production AppMetrica key lives here only.
+ * Do not copy the API key into screens or repositories.
  */
 
-/** Empty until a real AppMetrica key is provided by the product owner. */
-export const APPMETRICA_API_KEY: string | null = null
-
-function hasUsableApiKey(key: string | null): boolean {
-	return typeof key === 'string' && key.trim().length > 0
-}
+/** Production AppMetrica API key (Yandex AppMetrica). */
+export const APPMETRICA_API_KEY =
+	'063533b3-e38c-4d3d-af67-848018520f6d'
 
 /**
- * Hard gate: analytics native activation stays off without a real key.
+ * Hard gate: analytics is production-enabled with a real key.
  */
-export const ANALYTICS_ENABLED: boolean = hasUsableApiKey(APPMETRICA_API_KEY)
+export const ANALYTICS_ENABLED = true
 
-/** Provider label for diagnostics / future wiring. */
+/** Provider label for diagnostics. */
 export const ANALYTICS_PROVIDER = 'appmetrica' as const
 
-/** Never activate AppMetrica in __DEV__ until explicitly enabled with a real key. */
+/**
+ * When false, AppMetrica activate/report are skipped in __DEV__
+ * (tests inject a mock adapter instead).
+ */
 export const APPMETRICA_ENABLE_IN_DEV = false

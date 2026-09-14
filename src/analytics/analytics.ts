@@ -1,79 +1,30 @@
 /**
- * Fail-safe analytics facade.
- * AppMetrica stays dormant until a real API key is configured.
+ * Fail-safe analytics facade backed by AppMetrica.
+ * Never blocks gameplay / first render.
  */
 
+import { ANALYTICS_ENABLED, APPMETRICA_API_KEY } from './config'
+import { getAnalyticsAdapter } from './appMetricaAdapter'
 import {
-	ANALYTICS_ENABLED,
-	APPMETRICA_API_KEY,
-	APPMETRICA_ENABLE_IN_DEV,
-} from './config'
-import {
+	AnalyticsEvents,
 	isKnownAnalyticsEvent,
 	sanitizeAnalyticsParams,
 	type AnalyticsEventName,
 	type AnalyticsParams,
 } from './events'
 
-type AppMetricaModule = {
-	activate: (config: {
-		apiKey: string
-		sessionTimeout?: number
-		logs?: boolean
-		statisticsSending?: boolean
-	}) => void
-	reportEvent: (name: string, attributes?: Record<string, unknown>) => void
-}
-
 let activated = false
-
-function getAppMetrica(): AppMetricaModule | null {
-	if (!ANALYTICS_ENABLED || !APPMETRICA_API_KEY) {
-		return null
-	}
-	if (__DEV__ && !APPMETRICA_ENABLE_IN_DEV) {
-		return null
-	}
-	try {
-		// Lazy require — package may be absent until production key arrives.
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const mod = require('@appmetrica/react-native-analytics') as
-			| AppMetricaModule
-			| { default: AppMetricaModule }
-		if (mod && typeof (mod as AppMetricaModule).activate === 'function') {
-			return mod as AppMetricaModule
-		}
-		if (
-			mod &&
-			typeof (mod as { default: AppMetricaModule }).default?.activate ===
-				'function'
-		) {
-			return (mod as { default: AppMetricaModule }).default
-		}
-		return null
-	} catch {
-		return null
-	}
-}
+let appOpenSent = false
 
 /**
- * Activate AppMetrica once when a real key exists. Safe no-op otherwise.
+ * Activate AppMetrica once per process. Safe to call repeatedly.
  */
 export function activateAnalytics(): void {
 	try {
 		if (!ANALYTICS_ENABLED || !APPMETRICA_API_KEY || activated) {
 			return
 		}
-		const AppMetrica = getAppMetrica()
-		if (!AppMetrica) {
-			return
-		}
-		AppMetrica.activate({
-			apiKey: APPMETRICA_API_KEY,
-			sessionTimeout: 300,
-			logs: false,
-			statisticsSending: true,
-		})
+		getAnalyticsAdapter().activate(APPMETRICA_API_KEY)
 		activated = true
 	} catch {
 		// Never block startup.
@@ -82,6 +33,7 @@ export function activateAnalytics(): void {
 
 /**
  * Track a typed product event. Never throws into gameplay.
+ * `app_open` is emitted at most once per process/app session.
  */
 export function trackEvent(
 	name: AnalyticsEventName | string,
@@ -91,19 +43,26 @@ export function trackEvent(
 		if (!isKnownAnalyticsEvent(name)) {
 			return
 		}
-		const attributes = sanitizeAnalyticsParams(params)
 		if (!ANALYTICS_ENABLED) {
 			return
 		}
-		const AppMetrica = getAppMetrica()
-		if (!AppMetrica || !activated) {
+
+		if (name === AnalyticsEvents.APP_OPEN) {
+			if (appOpenSent) {
+				return
+			}
+			appOpenSent = true
+		}
+
+		if (!activated) {
+			activateAnalytics()
+		}
+		if (!activated) {
 			return
 		}
-		if (attributes) {
-			AppMetrica.reportEvent(name, attributes)
-		} else {
-			AppMetrica.reportEvent(name)
-		}
+
+		const attributes = sanitizeAnalyticsParams(params)
+		getAnalyticsAdapter().reportEvent(name, attributes)
 	} catch {
 		// Swallow — analytics must never break gameplay.
 	}
@@ -113,7 +72,12 @@ export function isAnalyticsActivated(): boolean {
 	return activated
 }
 
+export function hasReportedAppOpenThisSession(): boolean {
+	return appOpenSent
+}
+
 /** Jest helper. */
 export function resetAnalyticsForTests(): void {
 	activated = false
+	appOpenSent = false
 }

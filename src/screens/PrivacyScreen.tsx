@@ -8,7 +8,7 @@ import { theme } from '../theme'
 type Props = NativeStackScreenProps<RootStackParamList, 'Privacy'>
 
 /**
- * Local privacy disclosure (Yandex Ads + optional future AppMetrica).
+ * Local privacy disclosure (Yandex Ads + AppMetrica).
  */
 export function PrivacyScreen(_props: Props) {
 	return (
@@ -38,11 +38,10 @@ export function PrivacyScreen(_props: Props) {
 
 				<Text style={styles.section}>Аналитика</Text>
 				<Text style={styles.body}>
-					Подготовлена интеграция с AppMetrica. Пока production API key
-					не активирован, аналитика может быть отключена. После включения
-					будут собираться обезличенные события использования (например,
-					старт режима, завершение партии, показ rewarded), без имени,
-					email и аккаунта.
+					В приложении используется AppMetrica для технической аналитики,
+					оценки стабильности и анализа использования игровых функций
+					(например: открытие приложения, старт и завершение режима,
+					подсказки, rewarded). Имя, email и аккаунт не собираются.
 				</Text>
 
 				<Text style={styles.section}>Что мы не делаем</Text>

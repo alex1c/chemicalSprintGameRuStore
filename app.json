@@ -7,11 +7,16 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "chemical-sprint",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#012564"
+    },
     "android": {
       "package": "com.calculatorplatform.chemicalsprint",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#0B3D2E",
+        "backgroundColor": "#012564",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -27,7 +32,8 @@
     },
     "plugins": [
       "expo-system-ui",
-      "./plugins/withYandexMobileAds"
+      "./plugins/withYandexMobileAds",
+      "./plugins/withAppMetricaNoAdId"
     ],
     "extra": {
       "ads": {
@@ -37,6 +43,10 @@
         "learningBanner": "R-M-20034045-3",
         "interstitial": "R-M-20034045-4",
         "rewarded": "R-M-20034045-5"
+      },
+      "analytics": {
+        "provider": "appmetrica",
+        "appMetricaApiKey": "063533b3-e38c-4d3d-af67-848018520f6d"
       }
     }
   }

@@ -30,6 +30,7 @@ import {
 	resolveRewardedDayState,
 } from '../ads/policy'
 import type { AdsPersistedState } from '../ads/types'
+import { trackEvent } from '../analytics'
 import {
 	applyElementOutcome,
 	applyModeSessionToStats,
@@ -137,6 +138,10 @@ export async function persistAtomSpend(
 			},
 		}
 		await saveAppState(nextState, storage)
+		if (hintKey) {
+			trackEvent('hint_used', { hintType: hintKey })
+		}
+		trackEvent('atoms_spent', { atomAmount: amount, reason })
 		return { ok: true, wallet: spend.wallet }
 	} catch {
 		return {
@@ -422,6 +427,13 @@ async function persistCompletedSessionStatsUnlocked(
 			),
 		}
 		await saveAppState(nextState, storage)
+
+		if (breakdown.total > 0) {
+			trackEvent('atoms_earned', {
+				atomAmount: breakdown.total,
+				mode: modeId,
+			})
+		}
 
 		return {
 			...applied,
@@ -748,6 +760,10 @@ export async function grantRewardedAtoms(
 		}
 		await saveAppState(nextState, storage)
 		grantedRewardedIds.add(rewardId)
+		trackEvent('atoms_earned', {
+			atomAmount: REWARDED_ATOM_GRANT,
+			source: 'rewarded_ad',
+		})
 		return {
 			ok: true,
 			granted: true,

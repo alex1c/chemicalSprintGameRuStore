@@ -17,5 +17,14 @@ export {
 	activateAnalytics,
 	trackEvent,
 	isAnalyticsActivated,
+	hasReportedAppOpenThisSession,
 	resetAnalyticsForTests,
 } from './analytics'
+
+export {
+	setAnalyticsAdapterForTests,
+	shouldUseNativeAppMetrica,
+	nativeAppMetricaAdapter,
+} from './appMetricaAdapter'
+
+export type { AnalyticsAdapter } from './appMetricaAdapter'

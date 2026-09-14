@@ -50,6 +50,17 @@ yarn-error.*
 /ios
 /android
 
+# Built binaries (keep store icon assets)
+release-artifacts/*.apk
+release-artifacts/*.aab
+*.apk
+*.aab
+
 # Local agent tooling
 .claude/
+
+
+release-artifacts/*.txt
+release-artifacts/*-log.txt
+release-artifacts/deps-audit.txt
 

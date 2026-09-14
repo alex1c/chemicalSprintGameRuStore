@@ -58,6 +58,18 @@ npm run lint
 | Interstitial | `R-M-20034045-4` |
 | Rewarded (+10 ⚛, max 3/day) | `R-M-20034045-5` |
 
+## Analytics — AppMetrica
+
+- Package: `@appmetrica/react-native-analytics`
+- Production API key configured in `src/analytics/config.ts`
+- Typed facade: `src/analytics/`
+- Plugin: `./plugins/withAppMetricaNoAdId` (excludes GAID identifiers module)
+
+## Icon
+
+- Master: `assets/icon_gpt.png` (single source of truth — see `docs/ICON_SOURCE.md`)
+- Adaptive background: `#012564`
+
 ## Security / signing
 
 Production keystore is created **only by the user** on a local PC during the release phase.
