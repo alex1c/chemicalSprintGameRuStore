@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { ScrollView, StyleSheet, Text, View } from 'react-native'
 import {
 	SafeAreaView,
 	type Edge,
@@ -12,6 +12,8 @@ interface ScreenProps {
 	children?: ReactNode
 	/** Safe-area edges; bottom is included by default for CTA clearance. */
 	edges?: readonly Edge[]
+	/** Keep long calm screens scrollable above the system navigation area. */
+	scrollable?: boolean
 }
 
 /**
@@ -23,16 +25,30 @@ export function Screen({
 	subtitle,
 	children,
 	edges = ['top', 'right', 'left', 'bottom'],
+	scrollable = true,
 }: ScreenProps) {
 	return (
 		<SafeAreaView style={styles.safe} edges={edges}>
-			<View style={styles.container}>
+			{scrollable ? (
+				<ScrollView
+					style={styles.container}
+					contentContainerStyle={styles.scrollContent}
+				>
+					{title ? <Text style={styles.title}>{title}</Text> : null}
+					{subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+					<View style={[styles.body, !title && !subtitle ? styles.bodyFlush : null]}>
+						{children}
+					</View>
+				</ScrollView>
+			) : (
+				<View style={styles.container}>
 				{title ? <Text style={styles.title}>{title}</Text> : null}
 				{subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
 				<View style={[styles.body, !title && !subtitle ? styles.bodyFlush : null]}>
 					{children}
 				</View>
-			</View>
+				</View>
+			)}
 		</SafeAreaView>
 	)
 }
@@ -45,8 +61,11 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		paddingHorizontal: theme.spacing.lg,
+	},
+	scrollContent: {
 		paddingTop: theme.spacing.md,
 		paddingBottom: theme.spacing.lg,
+		flexGrow: 1,
 	},
 	title: {
 		...theme.typography.title,
